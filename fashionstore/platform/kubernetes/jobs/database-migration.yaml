@@ -39,7 +39,8 @@ spec:
               FLYWAY_USER=$(sed -n 's/.*"username":"\([^"]*\)".*/\1/p' /work/secret.json)
               FLYWAY_PASSWORD=$(sed -n 's/.*"password":"\([^"]*\)".*/\1/p' /work/secret.json)
               export FLYWAY_USER FLYWAY_PASSWORD
-              flyway -url="jdbc:mysql://${DB_HOST}:3306/${DB_NAME}?sslMode=REQUIRED" \
+              # The Flyway image bundles MariaDB Connector/J 2.x, which requires useSsl rather than sslMode.
+              flyway -url="jdbc:mysql://${DB_HOST}:3306/${DB_NAME}?useSsl=true&trustServerCertificate=false&disableSslHostnameVerification=false&serverSslCert=/flyway/sql/rds-ca.pem" \
                      -locations=filesystem:/flyway/sql -connectRetries=10 \
                      -validateMigrationNaming=true migrate info
           envFrom:

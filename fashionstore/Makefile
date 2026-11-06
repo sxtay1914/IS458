@@ -100,6 +100,7 @@ db-migrate-remote: ## Flyway Job against RDS from inside the cluster
 	kubectl kustomize platform/kubernetes/overlays/demo \
 	  | python3 scripts/select-kinds.py Namespace ServiceAccount ConfigMap | kubectl apply -f -
 	kubectl -n $(K8S_NS) create configmap flyway-migrations --from-file=database/migrations \
+	  --from-file=rds-ca.pem=functions/common/fashionstore_common/rds-ca.pem \
 	  --dry-run=client -o yaml | kubectl apply -f -
 	kubectl -n $(K8S_NS) delete job database-migration --ignore-not-found
 	kubectl apply -f platform/kubernetes/jobs/database-migration.yaml
