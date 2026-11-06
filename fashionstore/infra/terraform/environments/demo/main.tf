@@ -77,6 +77,7 @@ module "functions" {
   ses_recipient_emails = var.ses_recipient_emails
 
   process_checkout_reserved_concurrency = 5
+  reserve_checkout_concurrency          = false # Account quota is 10; SQS still caps workers at 5.
   payment_decline_percent               = var.payment_decline_percent
 }
 

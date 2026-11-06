@@ -28,7 +28,7 @@ Change from the original plan: Cognito `USER_PASSWORD_AUTH` was removed. Its acc
 | D10 | S3 gateway endpoint (free); everything else leaves through the single NAT | n/a |
 | D11 | Bootstrap creates OIDC plan and apply roles; the written plan workflow uses the PR role. Manual `make` deployment is current; no CD/apply workflow is implemented. No long-lived CI keys | n/a |
 | D12 | Budget alerts at 50% and 80% of $100 (actual) plus 100% forecast, in the bootstrap stack so they survive teardown | n/a |
-| D13 | `process-checkout` reserved concurrency 5 to protect the db.t4g.micro | Already in slides |
+| D13 | SQS caps checkout workers at 5 to protect the db.t4g.micro; reservation is disabled for this account's concurrency quota of 10 | Already in slides |
 | D14 | Deploy only for the demo; export evidence and destroy the demo stack immediately afterwards | n/a |
 | D15 | UC4 wording becomes "deduplicated email attempts per checkout, with possible duplicate delivery if SES accepts mail before SENT is persisted; attempts are logged" | "exactly one email" |
 
@@ -93,7 +93,7 @@ Exit: the `database-migration` Job runs Flyway to V003, and `seed-demo` loads pr
 | Item | Detail |
 | --- | --- |
 | `messaging` | `checkout-requests` SQS (visibility timeout 6× the Lambda timeout, `maxReceiveCount` 5), `checkout-dlq`, SNS `checkout-status`, SNS `ops-alerts` |
-| `functions` | `process-checkout` (in VPC, reserved concurrency 5, SQS batch 1 to 5 with `ReportBatchItemFailures`), `payment-api` (no VPC, deterministic outcome by `checkout_id` hash) |
+| `functions` | `process-checkout` (in VPC, SQS maximum concurrency 5 without reservation on this low-quota account, SQS batch 1 to 5 with `ReportBatchItemFailures`), `payment-api` (no VPC, deterministic outcome by `checkout_id` hash) |
 | Transaction | Insert `orders` (UNIQUE checkout_id) → conditional decrement per line → write outcome row → commit → publish to SNS. A duplicate key on insert means "already processed": re-publish the stored outcome and ack |
 
 Exit, with evidence saved to `evidence/`: `make smoke`, then `make load-flash` (every buyer races for FLASH-001 → confirmed never exceeds stock, stock never negative; the same race is proven offline by `test_flash_sale_never_oversells`), the idempotency tests in `tests/correctness/test_checkout_live.py`, and `tests/failure/test_dlq_redrive.py`.

@@ -23,4 +23,6 @@ make py-test
 
 The headline tests are `test_flash_sale_never_oversells` (120 shoppers race for 50 units across 10 parallel workers, which gives exactly 50 confirmed, 70 rejected and stock 0), `test_concurrent_duplicates_of_one_checkout_yield_one_order`, `test_publish_failure_keeps_order_and_retry_republishes` and `test_concurrent_deliveries_send_one_email`.
 
+The demo account has concurrency quota 10, so reservations are disabled; the SQS mapping still limits checkout workers to five.
+
 AWS database connections verify TLS against the bundled Singapore RDS CA certificates. Local database tests use MySQL 8.4.

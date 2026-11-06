@@ -25,7 +25,7 @@ locals {
       timeout     = var.process_checkout_timeout_seconds
       memory      = 256
       in_vpc      = true
-      reserved    = var.process_checkout_reserved_concurrency
+      reserved    = var.reserve_checkout_concurrency ? var.process_checkout_reserved_concurrency : -1
       env = merge(local.db_env, {
         PAYMENT_FUNCTION_NAME = "${var.name}-payment-api"
         STATUS_TOPIC_ARN      = var.checkout_status_topic_arn
@@ -234,7 +234,7 @@ resource "aws_lambda_event_source_mapping" "checkout" {
   maximum_batching_window_in_seconds = 1
   function_response_types            = ["ReportBatchItemFailures"]
 
-  # Matches reserved concurrency so the poller never over-invokes and gets throttled.
+  # Keep queue workers capped even when a low account quota prevents reservation.
   scaling_config {
     maximum_concurrency = max(2, var.process_checkout_reserved_concurrency)
   }

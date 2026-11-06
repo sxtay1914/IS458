@@ -80,6 +80,12 @@ variable "process_checkout_reserved_concurrency" {
   }
 }
 
+variable "reserve_checkout_concurrency" {
+  description = "Disable reservation when the account cannot leave 100 executions unreserved; the SQS cap still applies."
+  type        = bool
+  default     = true
+}
+
 variable "process_checkout_timeout_seconds" {
   description = "Keep the checkout queue visibility timeout at 6x this value or more."
   type        = number

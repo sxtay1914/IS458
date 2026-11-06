@@ -50,6 +50,16 @@ run "vpc_placement" {
   }
 }
 
+run "low_account_quota_keeps_sqs_cap_without_reservation" {
+  variables {
+    reserve_checkout_concurrency = false
+  }
+  assert {
+    condition     = aws_lambda_function.this["process-checkout"].reserved_concurrent_executions == -1 && aws_lambda_event_source_mapping.checkout.scaling_config[0].maximum_concurrency == 5
+    error_message = "Low-quota accounts must retain the five-worker SQS cap without reserving account concurrency"
+  }
+}
+
 run "wiring_and_env" {
   assert {
     condition     = aws_lambda_function.this["process-checkout"].environment[0].variables["PAYMENT_FUNCTION_NAME"] == "fs-test-payment-api"
