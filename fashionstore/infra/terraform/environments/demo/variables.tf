@@ -44,3 +44,54 @@ variable "alb_extra_source_security_group_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "packages_dir" {
+  description = "Where scripts/package-functions.sh wrote the Lambda zips. Defaults to <repo>/build/functions."
+  type        = string
+  default     = null
+}
+
+variable "sender_email" {
+  description = "SES From address (verified identity; sandbox)."
+  type        = string
+}
+
+variable "ses_recipient_emails" {
+  description = "Every demo shopper address. In the SES sandbox each must click its verification email."
+  type        = list(string)
+  default     = []
+}
+
+variable "ops_alert_emails" {
+  description = "Receive CloudWatch alarm emails (confirm the SNS subscription)."
+  type        = list(string)
+  default     = []
+}
+
+variable "eks_public_access_cidrs" {
+  description = "CIDRs allowed to reach the EKS API endpoint. Narrow to your IPs."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "eks_admin_principal_arns" {
+  description = "Teammates' IAM role/user ARNs and the CI apply role, granted cluster admin."
+  type        = list(string)
+  default     = []
+}
+
+variable "v1_weight" {
+  type    = number
+  default = 90
+}
+
+variable "v2_weight" {
+  type    = number
+  default = 10
+}
+
+variable "payment_decline_percent" {
+  description = "Simulated card decline rate for demos (0-100)."
+  type        = number
+  default     = 0
+}

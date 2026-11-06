@@ -1,0 +1,163 @@
+openapi: 3.1.0
+info:
+  title: FashionStore store-api
+  version: 1.0.0
+  description: >
+    Served at https://<cloudfront>/api/* through the CloudFront VPC origin and the
+    internal ALB. All endpoints except the catalogue need a Cognito access token
+    (Authorization: Bearer). Money is integer cents (SGD).
+servers:
+  - url: /api
+security:
+  - cognito: []
+paths:
+  /products:
+    get:
+      summary: List products
+      security: []
+      parameters:
+        - { name: category, in: query, schema: { type: string } }
+        - { name: in_stock, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Product" } }
+  /products/{sku}:
+    get:
+      summary: Product details with stock
+      security: []
+      parameters:
+        - { name: sku, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Product, content: { application/json: { schema: { $ref: "#/components/schemas/Product" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /cart:
+    get:
+      summary: The caller's cart
+      responses:
+        "200": { description: Cart, content: { application/json: { schema: { $ref: "#/components/schemas/Cart" } } } }
+    put:
+      summary: Replace the caller's cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items: { type: array, maxItems: 20, items: { $ref: "#/components/schemas/LineItem" } }
+      responses:
+        "200": { description: Cart, content: { application/json: { schema: { $ref: "#/components/schemas/Cart" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /checkouts:
+    post:
+      summary: Accept a checkout of the caller's cart (asynchronous)
+      description: >
+        Stores the checkout as PENDING and enqueues it to SQS checkout-requests
+        (contracts/events/checkout-request.schema.json). Idempotent on the
+        Idempotency-Key header: a retry with the same key returns the same checkout_id.
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "202":
+          description: Accepted; poll the status URL
+          headers:
+            Location: { schema: { type: string }, description: /api/checkouts/{checkout_id} }
+          content: { application/json: { schema: { $ref: "#/components/schemas/CheckoutStatus" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /checkouts/{checkout_id}:
+    get:
+      summary: Checkout status (owner only)
+      parameters:
+        - { name: checkout_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Status, content: { application/json: { schema: { $ref: "#/components/schemas/CheckoutStatus" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /orders:
+    get:
+      summary: The caller's orders, newest first
+      responses:
+        "200":
+          description: Orders
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Order" } } } }
+  /orders/{order_id}:
+    get:
+      summary: Order details (owner only; another shopper's order returns 404)
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Order, content: { application/json: { schema: { $ref: "#/components/schemas/Order" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /version:
+    get:
+      summary: Which pilot version served the request (v1 or v2)
+      security: []
+      responses:
+        "200":
+          description: Version
+          content: { application/json: { schema: { type: object, properties: { version: { type: string } } } } }
+components:
+  securitySchemes:
+    cognito:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              message: { type: string }
+              correlation_id: { type: string }
+  schemas:
+    Product:
+      type: object
+      required: [sku, name, category, price_cents]
+      properties:
+        sku: { type: string }
+        name: { type: string }
+        description: { type: string }
+        category: { type: string }
+        colour: { type: string }
+        size: { type: string }
+        price_cents: { type: integer }
+        image_url: { type: string }
+        stock: { type: integer, description: Available units (0 = sold out) }
+    LineItem:
+      type: object
+      required: [sku, qty]
+      properties:
+        sku: { type: string }
+        qty: { type: integer, minimum: 1, maximum: 20 }
+    Cart:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/LineItem" } }
+        total_cents: { type: integer }
+    CheckoutStatus:
+      type: object
+      required: [checkout_id, status]
+      properties:
+        checkout_id: { type: string, format: uuid }
+        status: { enum: [PENDING, CONFIRMED, REJECTED] }
+        reason: { type: [string, "null"], enum: [null, OUT_OF_STOCK, PAYMENT_DECLINED, UNKNOWN_SKU] }
+        order_id: { type: [integer, "null"] }
+    Order:
+      type: object
+      properties:
+        order_id: { type: integer }
+        checkout_id: { type: string, format: uuid }
+        status: { enum: [CONFIRMED, REJECTED] }
+        reason: { type: [string, "null"] }
+        total_cents: { type: integer }
+        created_at: { type: string, format: date-time }
+        items: { type: array, items: { $ref: "#/components/schemas/LineItem" } }

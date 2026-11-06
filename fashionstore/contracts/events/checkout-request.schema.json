@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fashionstore.example/contracts/events/checkout-request.schema.json",
+  "title": "CheckoutRequest",
+  "description": "SQS message body sent by store-api to checkout-requests after it stores the checkout as PENDING. Prices are NOT trusted from the message; process-checkout reads them from the database.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "checkout_id", "user_sub", "email", "items", "requested_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "checkout_id": { "type": "string", "format": "uuid", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+    "user_sub": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "email": { "type": "string", "format": "email", "maxLength": 254 },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sku", "qty"],
+        "properties": {
+          "sku": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "qty": { "type": "integer", "minimum": 1, "maximum": 20 }
+        }
+      }
+    },
+    "requested_at": { "type": "string", "format": "date-time" },
+    "correlation_id": { "type": "string", "maxLength": 64 }
+  }
+}

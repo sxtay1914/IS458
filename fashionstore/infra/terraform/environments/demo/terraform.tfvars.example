@@ -1,3 +1,12 @@
 owner      = "is458-fashionstore"
 expires_on = "2026-11-20"
+
+sender_email         = "orders@your-verified-domain-or-address.com"
+ses_recipient_emails = ["teammate1@example.com", "teammate2@example.com"]
+ops_alert_emails     = ["teammate1@example.com"]
+
+# Narrow the EKS API to your IPs, and add your teammate and the CI role:
+# eks_public_access_cidrs  = ["203.0.113.10/32"]
+# eks_admin_principal_arns = ["arn:aws:iam::<acct>:role/fashionstore-github-apply"]
+
 # alb_extra_source_security_group_ids = ["sg-..."]  # only if CloudFront -> ALB fails

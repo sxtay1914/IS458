@@ -1,0 +1,6 @@
+{
+  "apiBase": "/api",
+  "cognitoDomain": "",
+  "clientId": "",
+  "scopes": "openid email profile fashionstore-api/checkout.write fashionstore-api/orders.read"
+}

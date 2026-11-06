@@ -1,0 +1,17 @@
+# Used only for TargetGroupBinding (the ALB itself is Terraform-managed).
+# helm repo add eks https://aws.github.io/eks-charts
+# helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system -f values.yaml \
+#   --set vpcId=<vpc_id> \
+#   --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<irsa_role_arns.aws-load-balancer-controller>
+clusterName: fashionstore-demo-eks
+region: ap-southeast-1
+replicaCount: 1
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+# Do not reconcile Ingress/Service LBs: this cluster only uses TargetGroupBinding.
+enableServiceMutatorWebhook: false
+ingressClass: ""
+createIngressClassResource: false
+resources:
+  requests: { cpu: 50m, memory: 128Mi }

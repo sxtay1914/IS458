@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: store-api
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:fashionstore}?sslMode=PREFERRED&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 5          # 3 pods x 5 + Lambdas stays well under db.t4g.micro max_connections
+      minimum-idle: 1
+      connection-timeout: 5000
+      max-lifetime: 600000
+  jackson:
+    default-property-inclusion: always
+  mvc:
+    problemdetails:
+      enabled: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  info:
+    env:
+      enabled: true
+
+info:
+  version: ${APP_VERSION:local}
+
+fashionstore:
+  version: ${APP_VERSION:local}
+  region: ${AWS_REGION:ap-southeast-1}
+  messaging: ${MESSAGING:aws}
+  checkout-queue-url: ${CHECKOUT_QUEUE_URL:}
+  status-topic-arn: ${CHECKOUT_STATUS_TOPIC_ARN:}
+  db-secret-arn: ${DB_SECRET_ARN:}
+  cognito:
+    issuer-url: ${COGNITO_ISSUER_URL:https://cognito-idp.ap-southeast-1.amazonaws.com/ap-southeast-1_local}
+    client-id: ${COGNITO_CLIENT_ID:local-client}
+    domain: ${COGNITO_DOMAIN:}
+  reconciler:
+    enabled: ${RECONCILER_ENABLED:true}
+    interval-ms: ${RECONCILER_INTERVAL_MS:15000}
+    dispatch-after-seconds: ${RECONCILER_DISPATCH_AFTER_SECONDS:30}
+    outcome-after-seconds: ${RECONCILER_OUTCOME_AFTER_SECONDS:30}
+    batch-size: ${RECONCILER_BATCH_SIZE:50}
+
+logging:
+  pattern:
+    level: "%5p [%X{correlationId:-}]"

@@ -1,0 +1,15 @@
+# Non-secret defaults. AWS endpoints come from the generated app-config
+# ConfigMap in the overlay (terraform output app_config).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: store-api-defaults
+  namespace: fashionstore
+data:
+  SPRING_PROFILES_ACTIVE: "aws"
+  SERVER_PORT: "8080"
+  RECONCILER_INTERVAL_MS: "15000"
+  RECONCILER_DISPATCH_AFTER_SECONDS: "30"
+  RECONCILER_OUTCOME_AFTER_SECONDS: "30"
+  RECONCILER_BATCH_SIZE: "50"
+  JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -XX:TieredStopAtLevel=1"

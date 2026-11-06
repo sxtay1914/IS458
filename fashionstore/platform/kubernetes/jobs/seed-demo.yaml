@@ -1,0 +1,50 @@
+# Loads database/seeds/*.sql (re-runnable). Prerequisite:
+#   kubectl -n fashionstore create configmap db-seeds --from-file=database/seeds
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-demo
+  namespace: fashionstore
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      serviceAccountName: store-api
+      restartPolicy: Never
+      initContainers:
+        - name: fetch-credentials
+          image: public.ecr.aws/aws-cli/aws-cli:2.27.50
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$DB_SECRET_ARN" \
+                --query SecretString --output text > /work/secret.json
+          envFrom:
+            - configMapRef: { name: app-config }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+      containers:
+        - name: seed
+          image: mysql:8.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              USER=$(sed -n 's/.*"username":"\([^"]*\)".*/\1/p' /work/secret.json)
+              export MYSQL_PWD=$(sed -n 's/.*"password":"\([^"]*\)".*/\1/p' /work/secret.json)
+              for f in products inventory; do
+                mysql --ssl-mode=REQUIRED -h "$DB_HOST" -u "$USER" "$DB_NAME" < /seeds/$f.sql
+              done
+              mysql --ssl-mode=REQUIRED -h "$DB_HOST" -u "$USER" "$DB_NAME" -e "SELECT sku, qty FROM inventory ORDER BY sku"
+          envFrom:
+            - configMapRef: { name: app-config }
+          volumeMounts:
+            - { name: work, mountPath: /work, readOnly: true }
+            - { name: seeds, mountPath: /seeds, readOnly: true }
+      volumes:
+        - name: work
+          emptyDir: { medium: Memory }
+        - name: seeds
+          configMap: { name: db-seeds }

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: store-api-defaults
+  namespace: fashionstore
+data:
+  LOGGING_LEVEL_COM_FASHIONSTORE: "INFO"

@@ -1,0 +1,17 @@
+# helm repo add autoscaler https://kubernetes.github.io/autoscaler
+# helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler -n kube-system -f values.yaml \
+#   --set rbac.serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<irsa_role_arns.cluster-autoscaler>
+autoDiscovery:
+  clusterName: fashionstore-demo-eks
+awsRegion: ap-southeast-1
+rbac:
+  serviceAccount:
+    create: true
+    name: cluster-autoscaler
+extraArgs:
+  balance-similar-node-groups: true
+  skip-nodes-with-system-pods: false
+  scale-down-unneeded-time: 5m
+  scale-down-delay-after-add: 5m
+resources:
+  requests: { cpu: 50m, memory: 128Mi }

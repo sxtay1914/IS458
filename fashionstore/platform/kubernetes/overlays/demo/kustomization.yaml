@@ -1,0 +1,45 @@
+# Demo overlay. Run `make k8s-config` first: it writes generated/*.env from
+# `terraform output` (app settings, IRSA role, target groups, image).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fashionstore
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: app-config
+    envs: [generated/app-config.env]
+    options:
+      disableNameSuffixHash: true
+  - name: terraform-outputs
+    envs: [generated/terraform-outputs.env]
+    options:
+      disableNameSuffixHash: true
+      annotations:
+        config.kubernetes.io/local-config: "true"   # used for replacements only, never applied
+
+patches:
+  - path: resource-limits-patch.yaml
+  - path: configmap-patch.yaml
+
+replacements:
+  - source: { kind: ConfigMap, name: terraform-outputs, fieldPath: data.STORE_API_ROLE_ARN }
+    targets:
+      - select: { kind: ServiceAccount, name: store-api }
+        fieldPaths: ["metadata.annotations.[eks.amazonaws.com/role-arn]"]
+  - source: { kind: ConfigMap, name: terraform-outputs, fieldPath: data.TG_V1_ARN }
+    targets:
+      - select: { kind: TargetGroupBinding, name: store-api-v1 }
+        fieldPaths: [spec.targetGroupARN]
+  - source: { kind: ConfigMap, name: terraform-outputs, fieldPath: data.TG_V2_ARN }
+    targets:
+      - select: { kind: TargetGroupBinding, name: store-api-v2 }
+        fieldPaths: [spec.targetGroupARN]
+  - source: { kind: ConfigMap, name: terraform-outputs, fieldPath: data.STORE_API_IMAGE_V1 }
+    targets:
+      - select: { kind: Deployment, name: store-api-v1 }
+        fieldPaths: ["spec.template.spec.containers.[name=store-api].image"]
+  - source: { kind: ConfigMap, name: terraform-outputs, fieldPath: data.STORE_API_IMAGE_V2 }
+    targets:
+      - select: { kind: Deployment, name: store-api-v2 }
+        fieldPaths: ["spec.template.spec.containers.[name=store-api].image"]

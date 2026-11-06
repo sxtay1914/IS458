@@ -1,0 +1,14 @@
+# t3.medium (2 vCPU / 4 GiB): 3 API pods at 512Mi requests leave room for add-ons.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-api-v2
+  namespace: fashionstore
+spec:
+  template:
+    spec:
+      containers:
+        - name: store-api
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 768Mi }

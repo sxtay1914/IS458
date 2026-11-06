@@ -24,3 +24,7 @@ __pycache__/
 
 # Evidence exports can be large; commit only the curated set
 evidence/raw/
+
+# Lambda build output
+build/
+*.tsbuildinfo

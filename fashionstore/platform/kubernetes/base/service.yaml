@@ -1,0 +1,21 @@
+# One Service per version: each TargetGroupBinding registers the pod IPs
+# behind its Service into the matching ALB target group (v1 or v2).
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-api-v1
+  namespace: fashionstore
+spec:
+  selector: { app: store-api, version: v1 }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-api-v2
+  namespace: fashionstore
+spec:
+  selector: { app: store-api, version: v2 }
+  ports:
+    - { name: http, port: 8080, targetPort: http }

@@ -1,0 +1,21 @@
+# Registers pod IPs into the Terraform-owned target groups. spec.networking is
+# deliberately omitted: Terraform owns the security group rules (ALB -> app SG).
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: store-api-v1
+  namespace: fashionstore
+spec:
+  serviceRef: { name: store-api-v1, port: 8080 }
+  targetGroupARN: TG_V1_ARN
+  targetType: ip
+---
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: store-api-v2
+  namespace: fashionstore
+spec:
+  serviceRef: { name: store-api-v2, port: 8080 }
+  targetGroupARN: TG_V2_ARN
+  targetType: ip

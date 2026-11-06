@@ -1,0 +1,7 @@
+# Local run without AWS: MySQL from `make db-local-up`, messages kept in memory.
+#   SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
+fashionstore:
+  messaging: memory
+  reconciler:
+    dispatch-after-seconds: 5
+    outcome-after-seconds: 5

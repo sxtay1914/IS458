@@ -1,0 +1,57 @@
+# Flyway migrate against RDS (isolated subnet: only reachable from inside the VPC).
+# Prerequisites (make db-migrate-remote does all of this):
+#   kubectl -n fashionstore create configmap flyway-migrations --from-file=database/migrations
+#   the demo overlay applied (store-api ServiceAccount with IRSA + app-config ConfigMap)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-migration
+  namespace: fashionstore
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      serviceAccountName: store-api          # IRSA role can read the DB secret
+      restartPolicy: Never
+      initContainers:
+        - name: fetch-credentials
+          image: public.ecr.aws/aws-cli/aws-cli:2.27.50
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$DB_SECRET_ARN" \
+                --query SecretString --output text > /work/secret.json
+          envFrom:
+            - configMapRef: { name: app-config }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+      containers:
+        - name: flyway
+          image: flyway/flyway:10
+          command: ["/bin/sh", "-c"]
+          # RDS-managed secrets are compact JSON {"username":"..","password":".."} and the
+          # generated password excludes quote and backslash characters.
+          args:
+            - |
+              set -eu
+              FLYWAY_USER=$(sed -n 's/.*"username":"\([^"]*\)".*/\1/p' /work/secret.json)
+              FLYWAY_PASSWORD=$(sed -n 's/.*"password":"\([^"]*\)".*/\1/p' /work/secret.json)
+              export FLYWAY_USER FLYWAY_PASSWORD
+              flyway -url="jdbc:mysql://${DB_HOST}:3306/${DB_NAME}?sslMode=REQUIRED" \
+                     -locations=filesystem:/flyway/sql -connectRetries=10 \
+                     -validateMigrationNaming=true migrate info
+          envFrom:
+            - configMapRef: { name: app-config }
+          volumeMounts:
+            - { name: work, mountPath: /work, readOnly: true }
+            - { name: migrations, mountPath: /flyway/sql, readOnly: true }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+      volumes:
+        - name: work
+          emptyDir: { medium: Memory }
+        - name: migrations
+          configMap: { name: flyway-migrations }
