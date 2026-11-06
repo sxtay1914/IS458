@@ -1,0 +1,225 @@
+{
+  "date": "2026-11-06",
+  "region": "ap-southeast-1",
+  "demo_url": "https://d2n4ujhwv1l7tf.cloudfront.net",
+  "storefront": {
+    "unit_tests_passed": 21,
+    "typecheck": "passed",
+    "production_build": "passed",
+    "mock_browser_journeys_passed": 4,
+    "live_browser_journeys_passed": 3,
+    "live_browser_journeys_skipped": 1,
+    "desktop_width": 1440,
+    "mobile_width": 390,
+    "mobile_horizontal_overflow": false
+  },
+  "api": {
+    "passed": 31,
+    "skipped": 4,
+    "test_cases": [
+      {
+        "name": "test_catalogue_and_version_are_public",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[PUT-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[POST-/checkouts]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/checkouts/a074d0f3-575f-47bc-9e68-d605cae50bf4]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/orders]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/orders/1]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[PUT-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[POST-/checkouts]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/checkouts/a074d0f3-575f-47bc-9e68-d605cae50bf4]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/orders]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/orders/1]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_tampered_signature_is_rejected",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_id_token_is_not_an_access_token",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_real_access_token_is_accepted",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_errors_carry_a_correlation_id",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_alb_is_internal_and_resolves_to_private_ips",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_storefront_bucket_refuses_direct_access",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_database_is_not_public",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_cloudfront_serves_site_and_api_over_https",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_spa_deep_links_are_rewritten_but_api_404s_are_not",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_other_shoppers_checkout_and_order_are_invisible",
+        "suite": "security.test_ownership",
+        "status": "passed"
+      },
+      {
+        "name": "test_idempotency_key_of_another_shopper_is_refused",
+        "suite": "security.test_ownership",
+        "status": "passed"
+      },
+      {
+        "name": "test_checkout_confirms_decrements_stock_and_clears_cart",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_retry_with_same_key_returns_same_checkout_and_one_order",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_empty_cart_is_refused",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_unknown_sku_cannot_enter_the_cart",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_declined_payment_is_rejected_without_stock_change",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_pilot_traffic_split_is_about_90_10",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_reconciler_dispatches_checkouts_that_missed_the_queue",
+        "suite": "failure.test_dispatch_recovery",
+        "status": "skipped"
+      },
+      {
+        "name": "test_redriven_message_becomes_an_order",
+        "suite": "failure.test_dlq_redrive",
+        "status": "passed"
+      },
+      {
+        "name": "test_email_is_sent_once_after_notifier_recovers",
+        "suite": "failure.test_notification_recovery",
+        "status": "skipped"
+      },
+      {
+        "name": "test_checkout_survives_payment_outage",
+        "suite": "failure.test_worker_retry",
+        "status": "skipped"
+      },
+      {
+        "name": "test_poison_message_lands_in_dlq_after_five_receives",
+        "suite": "failure.test_worker_retry",
+        "status": "skipped"
+      }
+    ]
+  },
+  "report_lambda": {
+    "date": "2026-11-06",
+    "sales_rows": 8,
+    "revenue_cents": 54890,
+    "stock_rows": 10,
+    "keys": {
+      "sales": "reports/sales/dt=2026-11-06/sales.csv",
+      "stock": "reports/stock/dt=2026-11-06/stock.csv"
+    }
+  },
+  "athena_daily_revenue": [
+    [
+      "dt",
+      "orders",
+      "revenue_sgd"
+    ],
+    [
+      "2026-11-06",
+      "8",
+      "548.9"
+    ]
+  ],
+  "teardown": "in progress",
+  "limitations": [
+    "Optional chaos and slow tests were not run.",
+    "Browser fault-injection retry is covered by the mocked journey and unit tests.",
+    "Customer email inbox delivery was not checked; test recipients use the SES simulator."
+  ]
+}

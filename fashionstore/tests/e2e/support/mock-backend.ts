@@ -73,7 +73,8 @@ export async function installMockBackend(page: Page, email: string): Promise<Moc
 
     if (req.method() === 'GET' && path === '/products') {
       const cat = url.searchParams.get('category');
-      return json(r, 200, PRODUCTS.filter((p) => !cat || p.category === cat));
+      const inStock = url.searchParams.get('in_stock') === 'true';
+      return json(r, 200, PRODUCTS.filter((p) => (!cat || p.category === cat) && (!inStock || p.stock > 0)));
     }
     if (req.method() === 'GET' && path.startsWith('/products/')) {
       const p = PRODUCTS.find((x) => x.sku === decodeURIComponent(path.slice(10)));

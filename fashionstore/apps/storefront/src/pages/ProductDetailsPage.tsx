@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useApi } from '../api/ApiContext';
 import { useAuth } from '../auth/AuthContext';
+import { Icon } from '../components/Icon';
 import { formatPrice } from '../config';
 import { useCart } from '../hooks/useCart';
 import type { Product } from '../types';
@@ -20,8 +21,8 @@ export function ProductDetailsPage() {
     api.product(sku).then(setProduct).catch((e: Error) => setError(e.message));
   }, [api, sku]);
 
-  if (error) return <p className="error">{error}</p>;
-  if (!product) return <p className="muted">Loading…</p>;
+  if (error && !product) return <p className="alert alert-bad">{error}</p>;
+  if (!product) return <div className="details"><div className="skeleton tall" /><div className="skeleton" /></div>;
 
   const onAdd = async () => {
     if (!user) return login(`/products/${sku}`);
@@ -36,17 +37,36 @@ export function ProductDetailsPage() {
     }
   };
 
+  const soldOut = product.stock <= 0;
+  const stockPct = Math.max(4, Math.min(100, (product.stock / 25) * 100));
+
   return (
-    <article className="details">
-      <img src={product.image_url ?? undefined} alt={product.name} />
-      <div>
-        <h1>{product.name}</h1>
-        <p className="price">{formatPrice(product.price_cents)}</p>
-        <p>{product.description}</p>
-        <p className="muted">{[product.colour, product.size].filter(Boolean).join(' · ')}</p>
-        <button className="primary" disabled={product.stock <= 0 || busy} onClick={() => void onAdd()}>
-          {product.stock <= 0 ? 'Sold out' : user ? 'Add to bag' : 'Sign in to buy'}
-        </button>
+    <article>
+      <Link to="/" className="back"><Icon name="back" size={18} /> Back to shop</Link>
+      <div className="details">
+        <div className="details-media"><img src={product.image_url ?? undefined} alt={product.name} /></div>
+        <div className="panel details-info">
+          <p className="eyebrow">{product.category}</p>
+          <h1>{product.name}</h1>
+          <p className="price price-lg">{formatPrice(product.price_cents)}</p>
+          {product.description && <p>{product.description}</p>}
+          <div className="tags">
+            {product.colour && <span className="tag">{product.colour}</span>}
+            {product.size && <span className="tag">Size {product.size}</span>}
+          </div>
+          <div className="stock">
+            <div className="stock-row">
+              <span className="small strong">{soldOut ? 'Out of stock' : product.stock < 10 ? 'Going fast' : 'In stock'}</span>
+              <span className="small muted">{soldOut ? '0' : product.stock} available</span>
+            </div>
+            <div className={`progress ${soldOut ? 'progress-bad' : product.stock < 10 ? 'progress-warn' : 'progress-ok'}`}
+                 aria-hidden="true"><span style={{ width: `${soldOut ? 0 : stockPct}%` }} /></div>
+          </div>
+          {error && <p className="alert alert-bad" role="alert">{error}</p>}
+          <button className="btn btn-primary btn-block btn-lg" disabled={soldOut || busy} onClick={() => void onAdd()}>
+            {soldOut ? 'Sold out' : user ? 'Add to bag' : 'Sign in to buy'}
+          </button>
+        </div>
       </div>
     </article>
   );

@@ -8,9 +8,9 @@ export function CheckoutStatusPage() {
   const api = useApi();
   const { status, error, timedOut } = useCheckoutPolling(checkoutId, api.checkoutStatus);
   return (
-    <section>
+    <section className="narrow">
       <CheckoutStatus status={status} timedOut={timedOut} />
-      {error && <p className="muted">Still trying… ({error})</p>}
+      {error && <p className="muted center small">Still trying… ({error})</p>}
     </section>
   );
 }

@@ -3,7 +3,7 @@
 What every folder and file is for, what is finished, and what is left.
 Status as of 2026-11-06. "A" is the platform builder, "B" is the data and app builder.
 
-Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. Original test results came from the PDF. The checkout retry fix was subsequently verified locally with 24 API integration tests and 17 storefront unit tests; other results remain as recorded in the guide.
+Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. The latest verification includes 24 API integration tests, 57 Lambda tests, 21 storefront unit tests, four mocked browser journeys, 31 live API checks and three live browser journeys. Four optional live API tests and one browser fault-injection journey were skipped. Sanitized AWS results and screenshots are under `docs/report/evidence/2026-11-06/`; immediate post-demo teardown is in progress.
 
 ## How the pieces fit
 
@@ -132,9 +132,9 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | `src/hooks/useCheckoutPolling.ts` | Polls a checkout with backoff until it is decided |
 | `src/pages/*` | Products, product details, bag, checkout, status, orders, order details, sign-in callback |
 | `src/pages/checkoutKey.ts` | One Idempotency-Key per checkout attempt, reused on retry |
-| `src/components/*` | Navigation, product card, cart line, checkout status panel |
+| `src/components/*` | Navigation, footer with API version, product cards, cart lines, checkout steps and status, icons and not-found page |
 | `src/styles/app.css`, `src/types/index.ts` | Styling and shared types |
-| `tests/*` | 17 vitest tests (RFC 7636 PKCE vector, API client, polling, retry keeps the same key, components) |
+| `tests/*` | 21 vitest tests (RFC 7636 PKCE vector, API client, polling, retry keeps the same key, components) |
 | `README.md` | Layout and local dev |
 
 ## infra/terraform/ — all AWS resources
@@ -222,7 +222,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | Database schema and seeds | Flyway V001–V003 migrate cleanly on MySQL 8.0 |
 | Four Lambdas | 57 pytest tests green on real MySQL 8, including the oversell race and duplicate delivery |
 | store-api | 24 integration tests green on Testcontainers MySQL; the jar starts locally and serves the catalogue |
-| storefront | 17 unit tests, typecheck and production build green |
+| storefront | 21 unit tests, typecheck and production build green |
 | Browser journeys | 4 Playwright tests green against the mocked backend, 12 of 12 on a 3x repeat |
 | Live tests and load scripts | Written; all 35 live tests skip cleanly offline; the public-endpoint auth tests passed against a locally running store-api |
 | Kubernetes, Helm, deploy scripts, CI | Written; the overlay renders with `kubectl kustomize` |

@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: { '/api': 'http://localhost:8080' },
+    // tests/contract.test.ts reads ../../contracts/openapi.yaml to check the API client against it.
+    fs: { allow: ['.', '../../contracts'] },
   },
   build: { sourcemap: true },
   test: {

@@ -8,18 +8,19 @@ Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100
 
 ## Technology and recorded status
 
-| Area | Implemented choice | Evidence recorded in the PDF; not rerun for this documentation update |
+| Area | Implemented choice | Verification on 2026-11-06 |
 | --- | --- | --- |
-| Storefront | React 19, TypeScript, Vite; private S3 through CloudFront OAC | 15 unit tests, typecheck and production build |
-| Store API | Spring Boot 3.5, Java 21; EKS | 23 integration tests on Testcontainers MySQL; Docker image build still pending |
-| Functions | Four Python 3.12 arm64 Lambdas | 56 pytest tests on real MySQL 8, including the stock race and duplicate delivery |
-| Database | RDS MySQL 8.4; Flyway canonical SQL migrations | V001–V003 migrated locally |
-| Infrastructure | Terraform; ten service modules plus `private-bucket` helper | 31 mocked-provider test runs, formatting and validation |
-| Workloads | Kubernetes, Kustomize and Helm | Overlay rendered; no kubeconform schema check recorded |
-| Browser tests | Playwright | Four mocked-backend journeys; 12 passes on a three-repeat run |
-| Live and load checks | pytest and k6 | Written; 35 live tests skipped offline; AWS, chaos and load runs pending |
+| Storefront | React 19, TypeScript, Vite, self-hosted Nunito; supplied UI integrated | 21 unit tests, typecheck and production build passed |
+| Store API | Spring Boot 3.5, Java 21; EKS | 24 MySQL 8.4 integration tests; amd64 Docker image built and deployed |
+| Functions | Four Python 3.12 arm64 Lambdas | 57 pytest tests against local MySQL 8.4; live checkout and report processing passed |
+| Database | RDS MySQL 8.4; Flyway canonical SQL migrations | V001–V003 migrated on RDS with verified TLS; demo inventory seeded |
+| Infrastructure | Terraform; ten service modules plus private-bucket helper | 33 mock-provider test runs; AWS demo applied with two Free-plan-eligible t3.small workers |
+| Workloads | Kubernetes, Kustomize and Helm | Two v1 pods and one v2 pod became ready; three add-ons running |
+| Browser tests | Playwright | Four mock journeys and three live journeys passed; one live fault-injection journey intentionally skipped |
+| Live API checks | pytest | 31 passed, four optional chaos/slow tests skipped |
+| Reporting | Lambda, S3 and Athena | Sales and stock CSVs generated; daily revenue query succeeded |
 
-The PDF predates AWS deployment. Bootstrap has now been planned and applied; the demo stack and deployed shopper flows remain unverified. Local source files and recorded offline results do not prove that the first AWS deployment will succeed. The GitHub repository already exists; the PDF's instruction to create it is stale. Local implementation files also include changes beyond the earlier GitHub push.
+The supplied UI is deployed and its checkout retry fix is preserved. Screenshots and sanitized results are in [deployment evidence](fashionstore/docs/report/evidence/2026-11-06/results.json). Demo teardown is in progress after successful checks; the demo URL is temporary. The budget/state/GitHub OIDC bootstrap is separate from the demo stack and is retained.
 
 ## Repository boundary
 
@@ -136,7 +137,11 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── components/
     │       │   │   ├── CartItem.tsx
     │       │   │   ├── CheckoutStatus.tsx
+    │       │   │   ├── CheckoutSteps.tsx
+    │       │   │   ├── Footer.tsx
+    │       │   │   ├── Icon.tsx
     │       │   │   ├── Navigation.tsx
+    │       │   │   ├── NotFound.tsx
     │       │   │   └── ProductCard.tsx
     │       │   ├── hooks/
     │       │   │   ├── useCart.ts
@@ -162,10 +167,12 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── checkout.test.tsx
     │       │   ├── client.test.ts
     │       │   ├── components.test.tsx
+    │       │   ├── contract.test.ts
     │       │   ├── helpers.tsx
     │       │   ├── pkce.test.ts
     │       │   ├── polling.test.tsx
-    │       │   └── setup.ts
+    │       │   ├── setup.ts
+    │       │   └── storefront.test.tsx
     │       ├── .env.example
     │       ├── README.md
     │       ├── index.html
@@ -197,6 +204,12 @@ This lists the current source/configuration files, including local uncommitted f
     │   │   └── products.sql
     │   └── README.md
     ├── docs/
+    │   ├── report/
+    │   │   └── evidence/
+    │   │       └── 2026-11-06/
+    │   │           ├── new-ui-desktop.png
+    │   │           ├── new-ui-mobile.png
+    │   │           └── results.json
     │   ├── implementation-plan.md
     │   └── repository-guide.md
     ├── functions/

@@ -1,7 +1,9 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ApiProvider } from './api/ApiContext';
 import { AuthProvider } from './auth/AuthContext';
+import { Footer } from './components/Footer';
 import { Navigation } from './components/Navigation';
+import { NotFound } from './components/NotFound';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
@@ -28,9 +30,10 @@ export function App({ config }: { config: AppConfig }) {
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/orders/:orderId" element={<OrderDetailsPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage config={config} />} />
-              <Route path="*" element={<p>Page not found.</p>} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
+          <Footer />
         </BrowserRouter>
       </ApiProvider>
     </AuthProvider>

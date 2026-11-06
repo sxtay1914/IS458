@@ -28,5 +28,12 @@ export function AuthCallbackPage({ config }: { config: AppConfig }) {
       .catch((e: Error) => setError(e.message));
   }, [config, navigate, setTokens]);
 
-  return error ? <p className="error">{error}</p> : <p className="muted">Signing you in…</p>;
+  return error ? (
+    <p className="alert alert-bad" role="alert">{error}</p>
+  ) : (
+    <div className="empty" role="status">
+      <div className="bubble bubble-wait" aria-hidden="true"><span className="dots"><i /><i /><i /></span></div>
+      <p className="muted">Signing you in…</p>
+    </div>
+  );
 }
