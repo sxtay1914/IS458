@@ -6,9 +6,9 @@ See the [current directory structure](../../FashionStore_Project_Directory_Struc
 
 ## Build status (2026-11-06)
 
-Application, infrastructure, tests and manual deployment commands are written; report/evidence documents and CD remain unimplemented. Results recorded by the repository guide (not rerun for this documentation update), tested without AWS: Terraform (31 `terraform test` runs, mocked provider), Flyway V001–V003, the four Lambdas (56 pytest tests on real MySQL 8, including the 120-buyers-for-50-units race), store-api (23 JUnit tests on Testcontainers MySQL), storefront (15 vitest tests, typecheck, build) and 4 Playwright journeys against a mocked backend. Written but needing the deployed stack: live pytest (security, correctness, failure), Playwright live mode, k6 load scripts, deploy scripts. Bootstrap has now been planned and applied to AWS. The demo stack, API Docker image build and live shopper flows remain unverified. Later fixes passed 24 API tests, 17 storefront tests, four mocked browser journeys, five bootstrap test runs and the reporting checks.
+The first AWS demo passed 31 live API tests and three live browser journeys; four optional API chaos/slow tests and one browser fault-injection journey were skipped. Local checks passed: 33 Terraform mock-provider test runs, 57 Lambda tests against MySQL 8.4, 24 API integration tests, 21 storefront tests, typecheck/build and four mocked browser journeys. The API Docker image was built for amd64 and deployed. Flyway V001–V003 migrated RDS with verified TLS, and reporting through Lambda/S3/Athena passed. Sanitized results and screenshots are in `docs/report/evidence/2026-11-06/`. CD, load drills and the full submission report remain outstanding.
 
-The owner requested immediate teardown after the demo because funds are limited. This supersedes the original five-day runtime. Keep the US$100 alert budget; it sends notifications and is not an automatic spending cap.
+The first demo is being torn down under the original cost instruction. The owner's latest instruction is to restart the complete demo with the supplied UI and illustrations, leave that restarted demo running for review, and remind them to tear it down. There is no automatic shutdown. Keep the US$100 alert budget; notifications are not a spending cap. The original five-day runtime is superseded.
 
 Change from the original plan: Cognito `USER_PASSWORD_AUTH` was removed. Its access tokens carry only `aws.cognito.signin.user.admin`, never the `fashionstore-api/*` scopes the API requires, so scripted tests sign in through the hosted UI with PKCE instead (`tests/e2e/tools/get-token.mjs`).
 
@@ -18,8 +18,8 @@ Change from the original plan: Cognito `USER_PASSWORD_AUTH` was removed. Its acc
 | --- | --- | --- |
 | D1 | Terraform for all AWS resources; a separate `bootstrap` stack keeps state, CI access and budgets alive between demo stacks | "CloudFormation, delete each session" (slides 15, 20) |
 | D2 | EKS managed node group of t3.small, ASG 1 / 2 / 3, `ignore_changes` on `desired_size` so Terraform does not fight Cluster Autoscaler | 2× t3.small |
-| D3 | CloudFront **VPC origin** to an **internal** ALB in the private app subnets, HTTP origin, ALB SG allows only the CloudFront origin-facing prefix list | Public ALB + secret header |
-| D4 | SES sandbox; every demo recipient address verified before Phase 5 | n/a |
+| D3 | CloudFront **VPC origin** to an **internal** ALB in the private app subnets, HTTP origin, ALB SG allows the CloudFront origin-facing prefix list plus its private VPC-origin service security group | Public ALB + secret header |
+| D4 | SES sandbox; verify the sender and real recipients, or use SES simulator recipients for tests | n/a |
 | D5 | Flyway owns the schema (`database/migrations/V00x__*.sql`), run as a Kubernetes Job | n/a |
 | D6 | `UNIQUE (checkout_id)` on `orders` and `notification_log` | "one order per checkout" enforced only in code |
 | D7 | Stock decrement is `UPDATE inventory SET qty = qty - ? WHERE sku = ? AND qty >= ?`, and an affected-row count of 0 means REJECTED | n/a |
@@ -29,7 +29,7 @@ Change from the original plan: Cognito `USER_PASSWORD_AUTH` was removed. Its acc
 | D11 | Bootstrap creates OIDC plan and apply roles; the written plan workflow uses the PR role. Manual `make` deployment is current; no CD/apply workflow is implemented. No long-lived CI keys | n/a |
 | D12 | Budget alerts at 50% and 80% of $100 (actual) plus 100% forecast, in the bootstrap stack so they survive teardown | n/a |
 | D13 | SQS caps checkout workers at 5 to protect the db.t4g.micro; reservation is disabled for this account's concurrency quota of 10 | Already in slides |
-| D14 | Deploy only for the demo; export evidence and destroy the demo stack immediately afterwards | n/a |
+| D14 | Deploy only for the demo; leave the restarted session running for owner review, then manually destroy it | n/a |
 | D15 | UC4 wording becomes "deduplicated email attempts per checkout, with possible duplicate delivery if SES accepts mail before SENT is persisted; attempts are logged" | "exactly one email" |
 
 Change slides 15, 19 and 20 to match D1 to D3 and D15 before you submit.
@@ -59,7 +59,7 @@ Sync points: end of Phase 0 (contracts frozen, `make validate` and the local tes
 
 ## Before the demo (Phase 0)
 
-Finish offline work before provisioning the demo. Collect integration and evidence results during the demo session, then destroy immediately.
+Finish offline work before provisioning the demo. Collect integration and evidence results during the demo session; remind the owner to destroy the restarted stack after review.
 
 | Work | Owner | Exit criterion |
 | --- | --- | --- |
@@ -74,7 +74,7 @@ Finish offline work before provisioning the demo. Collect integration and eviden
 
 ## Demo sequence (no five-day runtime)
 
-The original five-day cost estimate is superseded. Review current prices before a demo apply, keep the runtime short, export evidence and destroy immediately afterwards. US$100 budget alerts do not enforce a spending cap.
+The original five-day cost estimate is superseded. Review current prices before a demo apply, keep the runtime short, export evidence and manually destroy after the owner finishes review. US$100 budget alerts do not enforce a spending cap.
 
 ### Foundation and data (Phases 1 and 2a)
 
@@ -129,7 +129,7 @@ Exit: `make e2e-live` (`tests/e2e/specs/shopper-journey.spec.ts`) passes through
 
 Exit: `tests/failure/test_notification_recovery.py` (chaos) and `database/queries/verify-report-totals.sql` matches the orders table.
 
-### End of demo: load, failure and evidence, then immediate destroy (Phase 6)
+### End of demo: load, failure and evidence, then manual destroy after owner review (Phase 6)
 
 1. k6 `smoke`, then `demo` profiles for browse, checkout and flash-sale. Capture p95 latency, HPA and CA scaling events, and SQS age-of-oldest-message.
 2. Failure drills: kill a store-api pod, force payment failures into the DLQ and redrive them, and break SNS publish to show the reconciler recovering.
@@ -152,7 +152,7 @@ The stack is destroyed by hand. Do it in this order, or `terraform destroy` stal
 
 | Risk | Mitigation |
 | --- | --- |
-| VPC-origin ALB security group: CloudFront may connect from its service-managed SG (`CloudFront-VPCOrigins-Service-SG`) instead of the prefix list | The network module accepts extra source SG ids. If CloudFront returns 502 or 504 on `/api/*`, add that SG's id **[Guessing]** on which one applies until we test it |
+| VPC-origin ALB security group: CloudFront may connect from its service-managed SG (`CloudFront-VPCOrigins-Service-SG`) instead of the prefix list | The network module accepts extra source SG ids. If CloudFront returns 502 or 504 on `/api/*`, add that SG's id as confirmed during the first live AWS demo |
 | t3.small pod density (11 pods per node with the VPC CNI default) | 2 nodes are enough for 3 API pods plus add-ons; CA can add a third |
 | NAT data charges from in-VPC Lambdas calling SQS, SNS, SES and Secrets Manager | Small at demo volume; interface endpoints cost more than they save here |
 | SES sandbox | Use only verified addresses in tests |

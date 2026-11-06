@@ -3,7 +3,7 @@
 What every folder and file is for, what is finished, and what is left.
 Status as of 2026-11-06. "A" is the platform builder, "B" is the data and app builder.
 
-Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. The latest verification includes 24 API integration tests, 57 Lambda tests, 21 storefront unit tests, four mocked browser journeys, 31 live API checks and three live browser journeys. Four optional live API tests and one browser fault-injection journey were skipped. Sanitized AWS results and screenshots are under `docs/report/evidence/2026-11-06/`; immediate post-demo teardown is in progress.
+Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. The latest verification includes 24 API integration tests, 57 Lambda tests, 21 storefront unit tests, four mocked browser journeys, 31 live API checks and three live browser journeys. Four optional live API tests and one browser fault-injection journey were skipped. Sanitized AWS results and screenshots are under `docs/report/evidence/2026-11-06/`; the first demo teardown is in progress, followed by an owner-requested full restart with the new UI/images. The restarted demo remains running for owner review with a manual teardown reminder.
 
 ## How the pieces fit
 
@@ -45,7 +45,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 
 | File | What it does |
 | --- | --- |
-| `implementation-plan.md` | Locked decisions, who does what, the phased demo sequence with exit criteria and immediate teardown, the manual teardown checklist, risks |
+| `implementation-plan.md` | Locked decisions, who does what, the phased demo sequence with exit criteria and manual teardown after owner review, the manual teardown checklist, risks |
 | `repository-guide.md` | This file |
 
 ## contracts/ — the agreement between the two halves
@@ -229,7 +229,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 
 ## What still needs to be done
 
-Bootstrap is complete. Remaining live work runs during a short demo session, followed immediately by teardown; the original five-day runtime is superseded. The repository and monorepo workflow configuration already exist; the workflow changes still need pushing and a GitHub run.
+Bootstrap is complete. The first demo passed the live API/browser checks and is being removed. The owner requested a complete restart for review, followed by a teardown reminder; the original five-day runtime is superseded. The repository and monorepo workflow configuration already exist; the workflow changes still need pushing and a GitHub run.
 
 | # | Step | Who | Notes |
 | --- | --- | --- | --- |
@@ -246,7 +246,7 @@ Bootstrap is complete. Remaining live work runs during a short demo session, fol
 | 11 | Pilot: set weights 50/50, then 0/100 and back in tfvars, `terraform apply`, record the target-group metrics | A | |
 | 12 | Report: invoke `report` with `{"date": "today"}`, run the Athena named queries | B | |
 | 13 | Save evidence (screenshots, k6 summaries, CloudWatch graphs, Cost Explorer, `terraform state list`) | A + B | No `evidence/` folder yet |
-| 14 | Immediately after the demo: teardown checklist in the plan, then check the bill | A | |
+| 14 | After owner review: teardown checklist in the plan, then check the bill | A | |
 
 Gaps that are known and not built: no CD workflow (deploys are `make` commands run by hand), and
 the Kubernetes YAML has only been rendered and parsed, not schema-checked with kubeconform.

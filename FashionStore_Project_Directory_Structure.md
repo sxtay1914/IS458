@@ -4,7 +4,7 @@ Updated 2026-11-06 from all 13 pages of [FashionStore repository guide.pdf](<Fas
 
 The Git repository is [sxtay1914/IS458](https://github.com/sxtay1914/IS458). The application lives in its `fashionstore/` subdirectory. Paths below are relative to that application directory unless stated otherwise. Run all `make` commands from `fashionstore/` (or use `make -C fashionstore ...` from the repository root).
 
-Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. Deploy only for the demo and destroy demo resources immediately afterwards, as requested by the owner; the original five-day runtime is superseded. Part A production architecture is documentation only.
+Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. The first demo is being torn down. The owner then requested a full restart with the new UI/images, to remain running for review with a teardown reminder. Destroy it manually when review is finished; the original five-day runtime is superseded. Part A production architecture is documentation only.
 
 ## Technology and recorded status
 
@@ -20,7 +20,7 @@ Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100
 | Live API checks | pytest | 31 passed, four optional chaos/slow tests skipped |
 | Reporting | Lambda, S3 and Athena | Sales and stock CSVs generated; daily revenue query succeeded |
 
-The supplied UI is deployed and its checkout retry fix is preserved. Screenshots and sanitized results are in [deployment evidence](fashionstore/docs/report/evidence/2026-11-06/results.json). Demo teardown is in progress after successful checks; the demo URL is temporary. The budget/state/GitHub OIDC bootstrap is separate from the demo stack and is retained.
+The supplied UI is deployed and its checkout retry fix is preserved. Screenshots and sanitized results are in [deployment evidence](fashionstore/docs/report/evidence/2026-11-06/results.json). The first demo teardown is in progress after successful checks; the complete demo will be restarted for owner review. The evidence currently records the first deployment. The budget/state/GitHub OIDC bootstrap is separate from the demo stack and is retained.
 
 ## Repository boundary
 
@@ -536,7 +536,7 @@ The Makefile and six scripts exist; these are implemented commands awaiting firs
 5. Run `make deploy-storefront verify-private`. If the VPC origin fails, investigate the documented CloudFront service-managed security-group input before proceeding.
 6. Create verified test shoppers with `make test-users`, configure the `FS_*`/`E2E_*` variables in the test README and run `make live-test e2e-live`. Hosted-UI automation still needs its first real Cognito run.
 7. Run bounded chaos, load and pilot-weight demonstrations, manually invoke the report with `{"date":"today"}`, run Athena queries and collect evidence and billing data.
-8. Export evidence and immediately run the plan's manual teardown checklist after the demo. `make destroy-demo` removes bindings, uninstalls add-ons and destroys the disposable Terraform stack. Check residual resources and charges; retain bootstrap only while its state is still needed, then remove it last. RDS uses no final snapshot: export any needed data first.
+8. After the owner finishes reviewing the restarted demo, export evidence and run the plan's manual teardown checklist. `make destroy-demo` removes bindings, uninstalls add-ons and destroys the disposable Terraform stack. Check residual resources and charges; retain bootstrap only while its state is still needed, then remove it last. RDS uses no final snapshot: export any needed data first.
 
 ### CI in the current monorepo
 

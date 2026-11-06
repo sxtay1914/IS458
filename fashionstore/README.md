@@ -51,8 +51,8 @@ make verify-private
 make test-users EMAILS="a@you b@you a+decline@you" TEST_USER_PASSWORD=...
 make live-test e2e-live              # with the FS_* / E2E_* variables in tests/README.md
 make load-browse load-checkout load-flash PROFILE=demo
-# Export evidence, then destroy immediately after the demo:
+# After reviewing the restarted demo, export evidence and destroy:
 make destroy-demo
 ```
 
-Destroy demo resources immediately after the demo; do not leave them running for five days. Teardown is manual: follow the checklist in the plan; `make destroy-demo` covers steps 2–4. The US$100 budget sends alerts and does not automatically stop spending.
+The owner requested the restarted demo remain running for review, with a teardown reminder afterwards. Destroy it when review is finished; there is no automatic shutdown or five-day runtime. Teardown is manual: follow the checklist in the plan; `make destroy-demo` covers steps 2–4. The US$100 budget sends alerts and does not automatically stop spending.
