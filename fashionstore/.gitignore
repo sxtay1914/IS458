@@ -1,0 +1,26 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+backend.hcl
+*.tfvars
+!*.tfvars.example
+.terraform.tfstate.lock.info
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Build output
+node_modules/
+dist/
+target/
+__pycache__/
+.pytest_cache/
+*.zip
+
+# Evidence exports can be large; commit only the curated set
+evidence/raw/

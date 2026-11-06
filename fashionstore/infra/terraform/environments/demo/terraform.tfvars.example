@@ -1,0 +1,3 @@
+owner      = "is458-fashionstore"
+expires_on = "2026-11-20"
+# alb_extra_source_security_group_ids = ["sg-..."]  # only if CloudFront -> ALB fails
