@@ -1,5 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Flash Blazer">
-<rect width="480" height="600" fill="#111111"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#ffffff" text-anchor="middle">Flash Blazer</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#ffffff" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Flash Sale Blazer">
+<rect width="480" height="600" fill="#ffe3ec"/>
+<circle cx="240" cy="300" r="205" fill="#ffc6d8"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="530" rx="150" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M240 78 q0 -22 16 -22 q14 0 14 14 q0 10 -12 16 q-18 8 -18 26" fill="none" stroke="#8a8494" stroke-width="7"/>
+<path d="M240 112 L150 136 M240 112 L330 136" stroke="#8a8494" stroke-width="7"/>
+<path d="M194 136 L286 136 L340 160 L374 432 L336 442 L318 262 L318 498 L162 498 L162 262 L144 442 L106 432 L140 160 Z" fill="#2a2a33" stroke="#121218" stroke-width="6"/>
+<path d="M204 138 L276 138 L240 262 Z" fill="#ffffff" stroke="#d8d4e0" stroke-width="4"/>
+<path d="M194 136 L240 300 L224 304 L180 214 L196 196 L178 176 Z" fill="#3a3a46" stroke="#121218" stroke-width="5"/>
+<path d="M286 136 L240 300 L256 304 L300 214 L284 196 L302 176 Z" fill="#3a3a46" stroke="#121218" stroke-width="5"/>
+<circle cx="240" cy="340" r="7" fill="#f0457a"/><circle cx="240" cy="388" r="7" fill="#f0457a"/>
+<path d="M176 400 L222 400 M258 400 L304 400" stroke="#4a4a58" stroke-width="7"/>
+<path d="M112 418 L146 428 M368 418 L334 428" stroke="#4a4a58" stroke-width="4"/>
+<g transform="translate(330 96) rotate(12)"><circle r="38" fill="#ffc23c" stroke="#d99a00" stroke-width="5"/>
+<path d="M4 -24 L-14 4 L0 4 L-4 24 L14 -4 L0 -4 Z" fill="#2a2438" stroke="#2a2438" stroke-width="3"/></g>
+</g>
 </svg>

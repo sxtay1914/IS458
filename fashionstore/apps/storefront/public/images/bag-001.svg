@@ -1,5 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Woven Tote">
-<rect width="480" height="600" fill="#c8a96e"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#222222" text-anchor="middle">Woven Tote</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#222222" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Woven Tote Bag">
+<rect width="480" height="600" fill="#ffeede"/>
+<circle cx="240" cy="300" r="205" fill="#ffd9b8"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="512" rx="120" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+
+<path d="M186 270 Q186 148 240 148 Q294 148 294 270" fill="none" stroke="#8b5e34" stroke-width="14"/>
+<path d="M186 270 Q186 148 240 148 Q294 148 294 270" fill="none" stroke="#a87442" stroke-width="6"/>
+<defs><clipPath id="t"><path d="M136 270 L344 270 L322 500 Q240 514 158 500 Z"/></clipPath></defs>
+<path d="M136 270 L344 270 L322 500 Q240 514 158 500 Z" fill="#dcbd7e" stroke="#a7864a" stroke-width="6"/>
+<g clip-path="url(#t)"><path d="M120 300 L360 300" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 318 L360 318" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 336 L360 336" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 354 L360 354" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 372 L360 372" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 390 L360 390" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 408 L360 408" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 426 L360 426" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 444 L360 444" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 462 L360 462" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 480 L360 480" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M120 498 L360 498" stroke="#a7864a" stroke-width="3" opacity=".5"/><path d="M160 280 L146 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M178 280 L164 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M196 280 L182 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M214 280 L200 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M232 280 L218 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M250 280 L236 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M268 280 L254 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M286 280 L272 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M304 280 L290 505" stroke="#c7a466" stroke-width="5" opacity=".55"/><path d="M322 280 L308 505" stroke="#c7a466" stroke-width="5" opacity=".55"/></g>
+<rect x="132" y="262" width="216" height="30" rx="8" fill="#a87442" stroke="#7a5128" stroke-width="5"/>
+<circle cx="186" cy="277" r="5" fill="#f1d9a8"/><circle cx="294" cy="277" r="5" fill="#f1d9a8"/>
+</g>
 </svg>

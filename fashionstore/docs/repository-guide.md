@@ -122,7 +122,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | `package.json`, `package-lock.json` | Dependencies and scripts: `dev`, `build`, `test`, `typecheck` |
 | `index.html`, `vite.config.ts`, `tsconfig.json` | Vite entry, dev proxy of `/api` to :8080, test setup |
 | `public/config.json` | Runtime settings; the deploy script overwrites it with real Cognito values |
-| `public/images/*.svg` | Placeholder product pictures |
+| `public/images/*.svg` | Supplied product illustrations, served from S3 through CloudFront |
 | `.env.example` | Explains why there are no build-time env vars |
 | `src/main.tsx`, `App.tsx` | Loads `config.json`, then the routes |
 | `src/auth/pkce.ts` | Sign-in with Cognito: PKCE challenge, state check, code exchange |

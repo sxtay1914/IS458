@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Ribbed Knit Top">
-<rect width="480" height="600" fill="#efe6d8"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#222222" text-anchor="middle">Ribbed Knit Top</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#222222" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<rect width="480" height="600" fill="#ffe9ef"/>
+<circle cx="240" cy="300" r="205" fill="#ffd3df"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="530" rx="150" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M240 92 q0 -22 16 -22 q14 0 14 14 q0 10 -12 16 q-18 8 -18 26" fill="none" stroke="#8a8494" stroke-width="7"/>
+<path d="M240 126 L150 150 M240 126 L330 150" stroke="#8a8494" stroke-width="7"/>
+<defs><clipPath id="b"><path d="M178 214 L302 214 L302 432 Q240 444 178 432 Z"/></clipPath></defs>
+<path d="M204 152 Q240 182 276 152 L322 168 L350 232 L312 246 L302 222 L302 432 Q240 444 178 432 L178 222 L168 246 L130 232 L158 168 Z" fill="#f4e7cd" stroke="#c3aa80" stroke-width="6"/>
+<g clip-path="url(#b)"><path d="M186 182 L186 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M198 182 L198 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M210 182 L210 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M222 182 L222 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M234 182 L234 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M246 182 L246 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M258 182 L258 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M270 182 L270 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M282 182 L282 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/><path d="M294 182 L294 432" stroke="#c3aa80" stroke-width="3" opacity=".55"/></g>
+<path d="M204 152 Q240 182 276 152" fill="none" stroke="#c3aa80" stroke-width="8"/>
+<path d="M180 418 Q240 430 300 418" fill="none" stroke="#c3aa80" stroke-width="5"/>
+</g>
 </svg>

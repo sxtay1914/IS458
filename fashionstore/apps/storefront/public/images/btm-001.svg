@@ -1,5 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Wide-Leg Trousers">
-<rect width="480" height="600" fill="#24324a"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#ffffff" text-anchor="middle">Wide-Leg Trousers</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#ffffff" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<rect width="480" height="600" fill="#e2f7ee"/>
+<circle cx="240" cy="300" r="205" fill="#c4efdc"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="530" rx="150" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+
+<path d="M168 150 L312 150 L350 526 L254 526 L240 250 L226 526 L130 526 Z" fill="#33407a" stroke="#1e2650" stroke-width="6"/>
+<rect x="164" y="118" width="152" height="36" rx="8" fill="#2a3568" stroke="#1e2650" stroke-width="6"/>
+<path d="M190 120 L190 152 M290 120 L290 152 M240 120 L240 152" stroke="#1e2650" stroke-width="4"/>
+<circle cx="252" cy="136" r="6" fill="#d9c08a"/>
+<path d="M240 154 L240 228" stroke="#1e2650" stroke-width="4"/>
+<path d="M188 176 L172 520 M292 176 L308 520" stroke="#5a68a6" stroke-width="3" opacity=".7"/>
+<path d="M176 166 Q196 184 214 166 M266 166 Q284 184 304 166" fill="none" stroke="#1e2650" stroke-width="4"/>
+</g>
 </svg>

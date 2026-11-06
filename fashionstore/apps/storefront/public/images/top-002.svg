@@ -1,5 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Poplin Shirt">
-<rect width="480" height="600" fill="#f7f7f7"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#222222" text-anchor="middle">Poplin Shirt</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#222222" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Oversized Poplin Shirt">
+<rect width="480" height="600" fill="#e3f1ff"/>
+<circle cx="240" cy="300" r="205" fill="#c9e4ff"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="530" rx="150" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M240 82 q0 -22 16 -22 q14 0 14 14 q0 10 -12 16 q-18 8 -18 26" fill="none" stroke="#8a8494" stroke-width="7"/>
+<path d="M240 116 L150 140 M240 116 L330 140" stroke="#8a8494" stroke-width="7"/>
+<path d="M198 140 L282 140 L346 166 L398 404 L356 418 L320 256 L322 478 Q240 490 158 478 L160 256 L124 418 L82 404 L134 166 Z" fill="#ffffff" stroke="#aab3c5" stroke-width="6"/>
+<path d="M240 182 L240 482" stroke="#aab3c5" stroke-width="4"/>
+<circle cx="240" cy="214" r="5" fill="#dfe4ee" stroke="#aab3c5" stroke-width="2"/><circle cx="240" cy="266" r="5" fill="#dfe4ee" stroke="#aab3c5" stroke-width="2"/><circle cx="240" cy="318" r="5" fill="#dfe4ee" stroke="#aab3c5" stroke-width="2"/><circle cx="240" cy="370" r="5" fill="#dfe4ee" stroke="#aab3c5" stroke-width="2"/><circle cx="240" cy="422" r="5" fill="#dfe4ee" stroke="#aab3c5" stroke-width="2"/>
+<path d="M198 140 L240 184 L222 198 L186 152 Z M282 140 L240 184 L258 198 L294 152 Z" fill="#f2f5fa" stroke="#aab3c5" stroke-width="5"/>
+<rect x="178" y="226" width="40" height="44" rx="6" fill="none" stroke="#aab3c5" stroke-width="4"/>
+<path d="M90 392 L130 408 M392 392 L350 408" stroke="#aab3c5" stroke-width="4"/>
+</g>
 </svg>

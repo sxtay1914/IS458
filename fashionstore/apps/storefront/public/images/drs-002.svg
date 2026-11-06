@@ -1,5 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Satin Slip Dress">
-<rect width="480" height="600" fill="#2b2b2b"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#ffffff" text-anchor="middle">Satin Slip Dress</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#ffffff" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<rect width="480" height="600" fill="#efe9ff"/>
+<circle cx="240" cy="300" r="205" fill="#ddd3ff"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="530" rx="150" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M240 52 q0 -22 16 -22 q14 0 14 14 q0 10 -12 16 q-18 8 -18 26" fill="none" stroke="#8a8494" stroke-width="7"/>
+<path d="M240 86 L150 110 M240 86 L330 110" stroke="#8a8494" stroke-width="7"/>
+<defs><linearGradient id="sheen" x1="0" x2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset=".45" stop-color="#ffffff" stop-opacity=".22"/><stop offset=".55" stop-color="#ffffff" stop-opacity="0"/></linearGradient></defs>
+<path d="M210 104 L204 172 M270 104 L276 172" stroke="#2b2b35" stroke-width="5"/>
+<path d="M196 170 Q240 206 284 170 L290 266 Q304 400 336 524 Q240 546 144 524 Q176 400 190 266 Z" fill="#2b2b35" stroke="#15151c" stroke-width="6"/>
+<path d="M196 170 Q240 206 284 170 L290 266 Q304 400 336 524 Q240 546 144 524 Q176 400 190 266 Z" fill="url(#sheen)"/>
+<path d="M206 186 Q240 214 274 186" fill="none" stroke="#4a4a5a" stroke-width="4"/>
+<path d="M214 300 Q206 420 190 520 M262 300 Q270 420 286 520" stroke="#4a4a5a" stroke-width="3" fill="none"/>
+</g>
 </svg>

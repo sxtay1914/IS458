@@ -1,5 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Pleated Skirt">
-<rect width="480" height="600" fill="#6b7045"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#ffffff" text-anchor="middle">Pleated Skirt</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#ffffff" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Pleated Midi Skirt">
+<rect width="480" height="600" fill="#fff4d6"/>
+<circle cx="240" cy="300" r="205" fill="#ffe6a8"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="516" rx="150" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+
+<defs><linearGradient id="s" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".3" stop-color="#fff" stop-opacity=".2"/><stop offset=".42" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+<path d="M176 160 L304 160 L366 496 Q354 508 342 496 Q330 508 318 496 Q306 508 294 496 Q282 508 270 496 Q258 508 246 496 Q234 508 222 496 Q210 508 198 496 Q186 508 174 496 Q162 508 150 496 Q138 508 126 496 Q120 502 114 496 Z" fill="#808f4f" stroke="#56622f" stroke-width="6"/>
+<path d="M189 164 L144.5 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M202 164 L169.0 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M215 164 L193.5 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M228 164 L218.0 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M241 164 L242.5 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M254 164 L267.0 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M267 164 L291.5 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M280 164 L316.0 494" stroke="#56622f" stroke-width="3" opacity=".6"/><path d="M293 164 L340.5 494" stroke="#56622f" stroke-width="3" opacity=".6"/>
+<path d="M176 160 L304 160 L366 496 L114 496 Z" fill="url(#s)"/>
+<rect x="172" y="128" width="136" height="34" rx="8" fill="#6f7d42" stroke="#56622f" stroke-width="6"/>
+</g>
 </svg>

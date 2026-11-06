@@ -27,5 +27,5 @@ aws s3 sync "$APP/dist" "s3://$BUCKET" --delete --exclude 'assets/*' --exclude i
   --exclude config.json --cache-control 'public,max-age=300'
 aws s3 cp "$APP/dist/index.html" "s3://$BUCKET/index.html" --cache-control 'no-cache' --content-type 'text/html'
 aws s3 cp "$APP/dist/config.json" "s3://$BUCKET/config.json" --cache-control 'no-cache' --content-type 'application/json'
-aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths /index.html /config.json / >/dev/null
+aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths /index.html /config.json / "/images/*" >/dev/null
 echo "storefront deployed: $SITE"

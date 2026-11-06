@@ -1,5 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="600" viewBox="0 0 480 600" role="img" aria-label="Linen Midi Dress">
-<rect width="480" height="600" fill="#d9c7a7"/>
-<text x="240" y="300" font-family="Georgia, serif" font-size="34" fill="#222222" text-anchor="middle">Linen Midi Dress</text>
-<text x="240" y="345" font-family="Arial, sans-serif" font-size="16" letter-spacing="4" fill="#222222" text-anchor="middle" opacity="0.7">FASHIONSTORE</text>
+<rect width="480" height="600" fill="#fff1dc"/>
+<circle cx="240" cy="300" r="205" fill="#ffe3bd"/>
+<circle cx="78" cy="96" r="10" fill="#ffffff" opacity=".7"/><circle cx="410" cy="150" r="7" fill="#ffffff" opacity=".7"/><circle cx="398" cy="500" r="12" fill="#ffffff" opacity=".5"/>
+<ellipse cx="240" cy="530" rx="150" ry="16" fill="#000000" opacity=".10"/>
+<g stroke-linejoin="round" stroke-linecap="round">
+<path d="M240 74 q0 -22 16 -22 q14 0 14 14 q0 10 -12 16 q-18 8 -18 26" fill="none" stroke="#8a8494" stroke-width="7"/>
+<path d="M240 108 L150 132 M240 108 L330 132" stroke="#8a8494" stroke-width="7"/>
+<path d="M188 158 Q198 136 216 130 L240 178 L264 130 Q282 136 292 158 L300 258 L180 258 Z" fill="#dcc39b" stroke="#a98a5a" stroke-width="6"/>
+<path d="M180 270 L300 270 L356 520 Q240 542 124 520 Z" fill="#dcc39b" stroke="#a98a5a" stroke-width="6"/>
+<path d="M200 300 L178 505 M240 300 L240 520 M280 300 L302 505" stroke="#a98a5a" stroke-width="3" opacity=".45"/>
+<rect x="176" y="252" width="128" height="22" rx="8" fill="#c7a674" stroke="#a98a5a" stroke-width="6"/>
+<path d="M262 274 q8 34 -2 62 M270 274 q14 30 14 56" fill="none" stroke="#c7a674" stroke-width="8"/>
+<path d="M216 130 L240 178 L264 130" fill="none" stroke="#fff6e8" stroke-width="4" opacity=".7"/>
+</g>
 </svg>
