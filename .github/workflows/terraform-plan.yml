@@ -1,0 +1,47 @@
+# Plans the demo stack on pull requests with the bootstrap plan role (OIDC, no keys).
+# Repository variables to set: AWS_PLAN_ROLE_ARN, TF_STATE_BUCKET.
+name: terraform-plan
+
+on:
+  pull_request:
+    paths:
+      - fashionstore/infra/**
+      - fashionstore/functions/**
+      - fashionstore/scripts/package-functions.sh
+      - fashionstore/Makefile
+      - .github/workflows/terraform-plan.yml
+
+permissions:
+  id-token: write
+  contents: read
+
+defaults:
+  run:
+    working-directory: fashionstore
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    if: vars.AWS_PLAN_ROLE_ARN != ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ap-southeast-1
+      - run: make package
+      - name: terraform plan
+        working-directory: fashionstore/infra/terraform/environments/demo
+        env:
+          STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          printf 'bucket = "%s"\nkey = "demo/terraform.tfstate"\nregion = "ap-southeast-1"\nencrypt = true\nuse_lockfile = true\n' "$STATE_BUCKET" > backend.hcl
+          terraform init -backend-config=backend.hcl -input=false
+          terraform plan -input=false -lock-timeout=60s \
+            -var owner=ci -var expires_on=2099-01-01 -var sender_email=ci@example.com
