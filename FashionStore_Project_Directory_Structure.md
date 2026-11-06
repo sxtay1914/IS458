@@ -13,7 +13,7 @@ Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100
 | Storefront | React 19, TypeScript, Vite; private S3 through CloudFront OAC | 15 unit tests, typecheck and production build |
 | Store API | Spring Boot 3.5, Java 21; EKS | 23 integration tests on Testcontainers MySQL; Docker image build still pending |
 | Functions | Four Python 3.12 arm64 Lambdas | 56 pytest tests on real MySQL 8, including the stock race and duplicate delivery |
-| Database | RDS MySQL 8.0; Flyway canonical SQL migrations | V001–V003 migrated locally |
+| Database | RDS MySQL 8.4; Flyway canonical SQL migrations | V001–V003 migrated locally |
 | Infrastructure | Terraform; ten service modules plus `private-bucket` helper | 31 mocked-provider test runs, formatting and validation |
 | Workloads | Kubernetes, Kustomize and Helm | Overlay rendered; no kubeconform schema check recorded |
 | Browser tests | Playwright | Four mocked-backend journeys; 12 passes on a three-repeat run |
@@ -204,6 +204,7 @@ This lists the current source/configuration files, including local uncommitted f
     │   │   └── fashionstore_common/
     │   │       ├── __init__.py
     │   │       ├── db.py
+    │   │       ├── rds-ca.pem
     │   │       └── testing.py
     │   ├── notifier/
     │   │   ├── templates/
@@ -227,6 +228,7 @@ This lists the current source/configuration files, including local uncommitted f
     │   │   │   ├── fakes.py
     │   │   │   ├── test_checkout_db.py
     │   │   │   ├── test_contracts.py
+    │   │   │   ├── test_db_connection.py
     │   │   │   └── test_validation.py
     │   │   ├── handler.py
     │   │   ├── repository.py
@@ -259,6 +261,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   └── demo/
     │       │       ├── tests/
     │       │       │   └── stack.tftest.hcl
+    │       │       ├── .terraform.lock.hcl
     │       │       ├── backend.hcl.example
     │       │       ├── main.tf
     │       │       ├── outputs.tf
@@ -278,6 +281,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── database/
     │       │   │   ├── tests/
     │       │   │   │   └── database.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── variables.tf
@@ -285,6 +289,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── delivery/
     │       │   │   ├── tests/
     │       │   │   │   └── delivery.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── spa-rewrite.js
@@ -293,6 +298,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── eks/
     │       │   │   ├── tests/
     │       │   │   │   └── eks.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── variables.tf
@@ -300,6 +306,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── functions/
     │       │   │   ├── tests/
     │       │   │   │   └── functions.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── variables.tf
@@ -307,6 +314,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── identity/
     │       │   │   ├── tests/
     │       │   │   │   └── identity.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── variables.tf
@@ -314,6 +322,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── messaging/
     │       │   │   ├── tests/
     │       │   │   │   └── messaging.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── variables.tf
@@ -321,6 +330,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── network/
     │       │   │   ├── tests/
     │       │   │   │   └── network.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── variables.tf
@@ -328,6 +338,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   ├── observability/
     │       │   │   ├── tests/
     │       │   │   │   └── observability.tftest.hcl
+    │       │   │   ├── .terraform.lock.hcl
     │       │   │   ├── main.tf
     │       │   │   ├── outputs.tf
     │       │   │   ├── variables.tf
@@ -340,6 +351,7 @@ This lists the current source/configuration files, including local uncommitted f
     │       │   └── registry/
     │       │       ├── tests/
     │       │       │   └── registry.tftest.hcl
+    │       │       ├── .terraform.lock.hcl
     │       │       ├── main.tf
     │       │       ├── outputs.tf
     │       │       ├── variables.tf
