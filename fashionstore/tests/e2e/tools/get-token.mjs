@@ -36,11 +36,8 @@ authorize.search = new URLSearchParams({
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
-  let code = null;
   // Catch the redirect back to the storefront; no need to load the SPA.
   await page.route(`${redirectUri}**`, (route) => {
-    const u = new URL(route.request().url());
-    if (u.searchParams.get('state') === state) code = u.searchParams.get('code');
     return route.fulfill({ status: 200, body: 'ok' });
   });
   await page.goto(authorize.toString());
@@ -49,7 +46,11 @@ try {
   await page.locator('input[name="password"]:visible').fill(password);
   await page.locator('input[name="signInSubmitButton"]:visible').click();
   await page.waitForURL(`${redirectUri}**`, { timeout: 30_000 });
-  if (!code) throw new Error('no authorization code (wrong password, or state mismatch)');
+  const callback = new URL(page.url());
+  const code = callback.searchParams.get('code');
+  if (!code || callback.searchParams.get('state') !== state) {
+    throw new Error('no authorization code (wrong password, or state mismatch)');
+  }
 
   const res = await fetch(`https://${cfg.cognitoDomain}/oauth2/token`, {
     method: 'POST',
