@@ -187,6 +187,20 @@ resource "aws_iam_policy" "state_access" {
   policy = data.aws_iam_policy_document.state_access.json
 }
 
+# ReadOnlyAccess supplies state reads; planning only needs writes to lock files.
+data "aws_iam_policy_document" "plan_state_locks" {
+  statement {
+    sid       = "ManageStateLocksOnly"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.state.arn}/*.tflock"]
+  }
+}
+
+resource "aws_iam_policy" "plan_state_locks" {
+  name   = "${var.project}-tfstate-plan-locks"
+  policy = data.aws_iam_policy_document.plan_state_locks.json
+}
+
 resource "aws_iam_role_policy_attachment" "plan_readonly" {
   role       = aws_iam_role.github_plan.name
   policy_arn = "arn:${local.partition}:iam::aws:policy/ReadOnlyAccess"
@@ -194,7 +208,7 @@ resource "aws_iam_role_policy_attachment" "plan_readonly" {
 
 resource "aws_iam_role_policy_attachment" "plan_state" {
   role       = aws_iam_role.github_plan.name
-  policy_arn = aws_iam_policy.state_access.arn
+  policy_arn = aws_iam_policy.plan_state_locks.arn
 }
 
 resource "aws_iam_role_policy_attachment" "apply_poweruser" {
