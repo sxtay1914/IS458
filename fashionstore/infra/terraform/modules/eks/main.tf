@@ -93,7 +93,7 @@ resource "aws_eks_access_policy_association" "admins" {
 }
 
 # ---------------------------------------------------------------------------
-# Nodes: t3.medium, ASG 1 / 2 / 3, AZ A private subnet only
+# Nodes: t3.small, ASG 1 / 2 / 3, AZ A private subnet only
 # ---------------------------------------------------------------------------
 
 data "aws_iam_policy_document" "assume_ec2" {

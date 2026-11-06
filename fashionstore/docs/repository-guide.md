@@ -153,7 +153,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | `modules/messaging` | SQS checkout queue + DLQ, notifier-failures queue, SNS topics |
 | `modules/analytics` | Reports bucket, Athena workgroup, Glue tables |
 | `modules/functions` | The four Lambdas, their roles, triggers, schedule, SES identities |
-| `modules/eks` | EKS 1.34, t3.medium node group 1/2/3, IRSA roles |
+| `modules/eks` | EKS 1.34, t3.small node group 1/2/3, IRSA roles |
 | `modules/delivery` | Internal ALB, v1/v2 target groups 90/10, S3 + OAC, CloudFront with VPC origin, `spa-rewrite.js` |
 | `modules/identity` | Cognito pool, hosted UI (classic), PKCE client, API scopes |
 | `modules/observability` | 11 alarms to email, one dashboard |

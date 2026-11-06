@@ -20,8 +20,8 @@ run "node_group_sizing" {
     error_message = "Use standard-support Kubernetes and disable paid extended support"
   }
   assert {
-    condition     = tolist(aws_eks_node_group.this.instance_types) == tolist(["t3.medium"])
-    error_message = "Nodes must be t3.medium"
+    condition     = tolist(aws_eks_node_group.this.instance_types) == tolist(["t3.small"])
+    error_message = "Nodes must be t3.small"
   }
   assert {
     condition     = aws_eks_node_group.this.scaling_config[0].min_size == 1 && aws_eks_node_group.this.scaling_config[0].desired_size == 2 && aws_eks_node_group.this.scaling_config[0].max_size == 3

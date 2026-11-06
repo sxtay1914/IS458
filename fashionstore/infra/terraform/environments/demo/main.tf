@@ -106,7 +106,7 @@ module "eks" {
   public_access_cidrs      = var.eks_public_access_cidrs
   admin_principal_arns     = var.eks_admin_principal_arns
 
-  node_instance_type = "t3.medium"
+  node_instance_type = "t3.small"
   node_min_size      = 1
   node_desired_size  = 2
   node_max_size      = 3

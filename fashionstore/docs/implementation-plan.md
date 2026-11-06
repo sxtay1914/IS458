@@ -17,7 +17,7 @@ Change from the original plan: Cognito `USER_PASSWORD_AUTH` was removed. Its acc
 | # | Decision | Replaces in the slides |
 | --- | --- | --- |
 | D1 | Terraform for all AWS resources; a separate `bootstrap` stack keeps state, CI access and budgets alive between demo stacks | "CloudFormation, delete each session" (slides 15, 20) |
-| D2 | EKS managed node group of t3.medium, ASG 1 / 2 / 3, `ignore_changes` on `desired_size` so Terraform does not fight Cluster Autoscaler | 2× t3.small |
+| D2 | EKS managed node group of t3.small, ASG 1 / 2 / 3, `ignore_changes` on `desired_size` so Terraform does not fight Cluster Autoscaler | 2× t3.small |
 | D3 | CloudFront **VPC origin** to an **internal** ALB in the private app subnets, HTTP origin, ALB SG allows only the CloudFront origin-facing prefix list | Public ALB + secret header |
 | D4 | SES sandbox; every demo recipient address verified before Phase 5 | n/a |
 | D5 | Flyway owns the schema (`database/migrations/V00x__*.sql`), run as a Kubernetes Job | n/a |
@@ -153,7 +153,7 @@ The stack is destroyed by hand. Do it in this order, or `terraform destroy` stal
 | Risk | Mitigation |
 | --- | --- |
 | VPC-origin ALB security group: CloudFront may connect from its service-managed SG (`CloudFront-VPCOrigins-Service-SG`) instead of the prefix list | The network module accepts extra source SG ids. If CloudFront returns 502 or 504 on `/api/*`, add that SG's id **[Guessing]** on which one applies until we test it |
-| t3.medium pod density (17 pods per node with the VPC CNI default) | 2 nodes are enough for 3 API pods plus add-ons; CA can add a third |
+| t3.small pod density (11 pods per node with the VPC CNI default) | 2 nodes are enough for 3 API pods plus add-ons; CA can add a third |
 | NAT data charges from in-VPC Lambdas calling SQS, SNS, SES and Secrets Manager | Small at demo volume; interface endpoints cost more than they save here |
 | SES sandbox | Use only verified addresses in tests |
 | Student accounts sometimes block Budgets or OIDC providers | Apply bootstrap in Phase 0 so you find out early |

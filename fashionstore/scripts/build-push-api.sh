@@ -15,7 +15,7 @@ if aws ecr describe-images --region "$REGION" --repository-name "${REPO#*/}" --i
 fi
 
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
-# EKS nodes are t3.medium (x86_64), so build amd64 even on an Apple-silicon laptop.
+# EKS nodes are t3.small (x86_64), so build amd64 even on an Apple-silicon laptop.
 docker build --platform linux/amd64 -t "$REPO:$TAG" "$ROOT/apps/store-api"
 docker push "$REPO:$TAG"
 echo "pushed $REPO:$TAG"

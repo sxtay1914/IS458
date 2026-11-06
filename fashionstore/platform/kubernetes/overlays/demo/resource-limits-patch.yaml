@@ -1,4 +1,4 @@
-# t3.medium (2 vCPU / 4 GiB): 3 API pods at 512Mi requests leave room for add-ons.
+# t3.small (2 vCPU / 2 GiB): spread API pods across the two demo workers.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
