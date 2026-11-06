@@ -42,7 +42,7 @@ public abstract class AbstractIntegrationTest {
     static final Path REPO_ROOT = Path.of(System.getProperty("repo.root", "../..")).toAbsolutePath().normalize();
 
     @SuppressWarnings("resource")
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
+    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
             .withDatabaseName("fashionstore").withUsername("test").withPassword("test")
             .withCommand("--default-time-zone=+00:00");
 

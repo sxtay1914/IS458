@@ -16,9 +16,9 @@ Run commands below from `fashionstore/` (`cd fashionstore` from the IS458 Git ro
 
 | Area | Status |
 | --- | --- |
-| `infra/terraform` (bootstrap + 10 service modules + bucket helper + demo env) | Built; 31 `terraform test` runs green (mocked AWS) |
+| `infra/terraform` (bootstrap + 10 service modules + bucket helper + demo env) | Built; 33 `terraform test` runs green (mocked AWS) |
 | `database` (Flyway V001–V003, seeds, verify queries) | Built; migrates cleanly on MySQL 8.0 |
-| `functions` (process-checkout, payment-api, notifier, report) | Built; 56 pytest tests green against real MySQL |
+| `functions` (process-checkout, payment-api, notifier, report) | Built; 57 pytest tests green against real MySQL |
 | `contracts` (OpenAPI, event schemas, examples) | Built; validated in Lambda and store-api tests |
 | `platform` (Kustomize base/overlay, Flyway + seed Jobs, Helm values) | Built; overlay renders |
 | `apps/store-api` (Spring Boot 3.5, Java 21) | Built; 24 tests green (Testcontainers MySQL); Docker image not built here |

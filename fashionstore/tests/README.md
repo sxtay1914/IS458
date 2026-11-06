@@ -4,8 +4,8 @@
 
 | What | Where | Command | Count |
 | --- | --- | --- | --- |
-| Terraform decisions + wiring (mocked provider) | `infra/terraform/**/tests/*.tftest.hcl` | `make tf-test` | 31 runs |
-| Lambdas against real MySQL 8 (oversell race, idempotency, notifier dedup, report CSV, payment, contracts) | `functions/*/tests` | `make py-test` | 56 |
+| Terraform decisions + wiring (mocked provider) | `infra/terraform/**/tests/*.tftest.hcl` | `make tf-test` | 33 runs |
+| Lambdas against real MySQL 8 (oversell race, idempotency, notifier dedup, report CSV, payment, contracts) | `functions/*/tests` | `make py-test` | 57 |
 | store-api against Testcontainers MySQL | `apps/store-api/src/test` | `make api-test` | 24 |
 | storefront unit tests | `apps/storefront/tests` | `make web-test` | 17 |
 | Browser journeys, mocked backend | `tests/e2e/specs` | `make e2e` | 4 |

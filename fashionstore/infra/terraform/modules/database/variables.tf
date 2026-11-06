@@ -23,7 +23,7 @@ variable "availability_zone" {
 
 variable "engine_version" {
   type    = string
-  default = "8.0"
+  default = "8.4"
 }
 
 variable "instance_class" {
@@ -62,9 +62,9 @@ variable "skip_final_snapshot" {
 }
 
 variable "require_tls" {
-  description = "Force TLS for every client. Off by default: traffic never leaves the VPC and the Lambdas would need the RDS CA bundle."
+  description = "Force TLS for every client. Lambda packages include the regional RDS CA bundle."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "tags" {

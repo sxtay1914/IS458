@@ -45,6 +45,10 @@ resource "aws_eks_cluster" "this" {
   version  = var.kubernetes_version
   role_arn = aws_iam_role.cluster.arn
 
+  upgrade_policy {
+    support_type = "STANDARD"
+  }
+
   access_config {
     authentication_mode                         = "API"
     bootstrap_cluster_creator_admin_permissions = true

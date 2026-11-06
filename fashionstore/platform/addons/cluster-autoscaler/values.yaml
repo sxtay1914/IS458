@@ -4,6 +4,8 @@
 autoDiscovery:
   clusterName: fashionstore-demo-eks
 awsRegion: ap-southeast-1
+image:
+  tag: v1.34.0
 rbac:
   serviceAccount:
     create: true

@@ -13,7 +13,7 @@ Sales CSVs keep one row per order and product, including `order_id`. Athena coun
 
 ## Tests
 
-Tests run against a real MySQL 8 database built from `database/migrations` (a throwaway schema per run). Set `TEST_DB_HOST`/`TEST_DB_PASSWORD` if MySQL isn't on `127.0.0.1` with root/root.
+Tests run against a real MySQL 8.4 database built from `database/migrations` (a throwaway schema per run). Set `TEST_DB_HOST`/`TEST_DB_PASSWORD` if MySQL isn't on `127.0.0.1` with root/root.
 
 ```bash
 make db-local-up
@@ -22,3 +22,5 @@ make py-test
 ```
 
 The headline tests are `test_flash_sale_never_oversells` (120 shoppers race for 50 units across 10 parallel workers, which gives exactly 50 confirmed, 70 rejected and stock 0), `test_concurrent_duplicates_of_one_checkout_yield_one_order`, `test_publish_failure_keeps_order_and_retry_republishes` and `test_concurrent_deliveries_send_one_email`.
+
+AWS database connections verify TLS against the bundled Singapore RDS CA certificates. Local database tests use MySQL 8.4.

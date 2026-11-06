@@ -16,6 +16,10 @@ variables {
 
 run "node_group_sizing" {
   assert {
+    condition     = aws_eks_cluster.this.version == "1.34" && aws_eks_cluster.this.upgrade_policy[0].support_type == "STANDARD"
+    error_message = "Use standard-support Kubernetes and disable paid extended support"
+  }
+  assert {
     condition     = tolist(aws_eks_node_group.this.instance_types) == tolist(["t3.medium"])
     error_message = "Nodes must be t3.medium"
   }

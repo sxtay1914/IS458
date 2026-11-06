@@ -13,6 +13,6 @@ Correctness rules that live in the schema:
 Local run:
 
 ```bash
-docker run -d --name fsdb -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=fashionstore -p 3306:3306 mysql:8.0
+docker run -d --name fsdb -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=fashionstore -p 3306:3306 mysql:8.4
 make db-migrate db-seed
 ```

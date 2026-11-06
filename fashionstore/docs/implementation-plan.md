@@ -82,7 +82,7 @@ The original five-day cost estimate is superseded. Review current prices before 
 | --- | --- |
 | `network` | VPC 10.10.0.0/16, three layers × two AZs, one NAT in AZ A, S3 gateway endpoint, SGs |
 | `registry` | ECR `store-api`, lifecycle keeps the last 5 images |
-| `database` | RDS MySQL 8.0 db.t4g.micro single-AZ in the isolated subnets, `manage_master_user_password`, 1-day backups, `skip_final_snapshot` |
+| `database` | RDS MySQL 8.4 db.t4g.micro single-AZ in the isolated subnets, `manage_master_user_password`, 1-day backups, `skip_final_snapshot` |
 | `eks` | Cluster, OIDC provider, access entries, node group in **AZ A private subnet only**, nodes get the `app` SG |
 | `observability` | 7-day log groups, alarms (DLQ depth > 0, Lambda errors, RDS CPU), SNS ops topic |
 

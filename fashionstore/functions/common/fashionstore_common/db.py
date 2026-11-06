@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 import pymysql
 import pymysql.cursors
@@ -49,6 +50,9 @@ def connect(database: str | None = None, refresh_credentials: bool = False) -> p
         read_timeout=30,
         write_timeout=30,
         charset="utf8mb4",
+        **({"ssl_ca": str(Path(__file__).with_name("rds-ca.pem")),
+            "ssl_verify_cert": True, "ssl_verify_identity": True}
+           if os.environ.get("DB_SECRET_ARN") else {}),
     )
 
 

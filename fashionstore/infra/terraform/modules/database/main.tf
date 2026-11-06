@@ -6,9 +6,9 @@ resource "aws_db_subnet_group" "this" {
 }
 
 resource "aws_db_parameter_group" "this" {
-  name        = "${var.name}-mysql80"
-  family      = "mysql8.0"
-  description = "FashionStore MySQL 8.0"
+  name        = "${var.name}-mysql84"
+  family      = "mysql8.4"
+  description = "FashionStore MySQL 8.4"
 
   parameter {
     name  = "character_set_server"
@@ -40,10 +40,11 @@ resource "aws_db_parameter_group" "this" {
 }
 
 resource "aws_db_instance" "this" {
-  identifier     = "${var.name}-mysql"
-  engine         = "mysql"
-  engine_version = var.engine_version
-  instance_class = var.instance_class
+  identifier               = "${var.name}-mysql"
+  engine                   = "mysql"
+  engine_version           = var.engine_version
+  engine_lifecycle_support = "open-source-rds-extended-support-disabled"
+  instance_class           = var.instance_class
 
   db_name                     = var.database_name
   username                    = var.master_username

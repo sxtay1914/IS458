@@ -17,11 +17,11 @@ Requires Terraform >= 1.10 (S3 `use_lockfile`) and AWS provider 6.x. Tested with
 | --- | --- | --- |
 | `network` | VPC 10.10.0.0/16, L1/L2/L3 × 2 AZs, IGW, one NAT (AZ A), S3 gateway endpoint, SGs | DB SG has no egress; ALB SG only from the CloudFront origin-facing prefix list |
 | `registry` | ECR `fashionstore-demo/store-api` | Immutable tags, scan on push, keep last 5 images |
-| `database` | RDS MySQL 8.0 db.t4g.micro, single-AZ in AZ A, isolated subnets | RDS-managed password in Secrets Manager, 1-day backups, no final snapshot |
+| `database` | RDS MySQL 8.4 db.t4g.micro, single-AZ in AZ A, isolated subnets | RDS-managed password in Secrets Manager, 1-day backups, no final snapshot |
 | `messaging` | SQS `checkout-requests` + DLQ (maxReceiveCount 5), `notifier-failures` SQS, SNS `checkout-status`, SNS `ops-alerts` | Visibility timeout 180 s = 6 × Lambda timeout |
 | `analytics` | Reports bucket (IA 30 d → Glacier 90 d), Athena results bucket (expire 7 d), Athena workgroup, Glue tables with partition projection, 2 named queries | 100 MB scan guardrail per query |
 | `functions` | 4 Python 3.12 arm64 Lambdas, one IAM role each, 7-day log groups, SQS mapping, SNS subscription, EventBridge Scheduler, SES identities | process-checkout reserved concurrency 5 and SQS max concurrency 5; payment-api outside the VPC |
-| `eks` | EKS 1.33 (access entries), t3.medium node group 1/2/3 in AZ A, IRSA for store-api, Cluster Autoscaler, LB controller | `ignore_changes` on `desired_size`; LB controller only gets TargetGroupBinding permissions |
+| `eks` | EKS 1.34 (access entries), t3.medium node group 1/2/3 in AZ A, IRSA for store-api, Cluster Autoscaler, LB controller | `ignore_changes` on `desired_size`; LB controller only gets TargetGroupBinding permissions |
 | `delivery` | Internal ALB, v1/v2 IP target groups weighted 90/10 on `/api/*`, private S3 + OAC, CloudFront VPC origin, SPA rewrite function | No distribution-wide error pages (they would hide API 404s) |
 | `identity` | Cognito user pool, hosted domain, public SPA client (code + PKCE), resource server scopes | Classic hosted UI (`managed_login_version = 1`) so tests can sign in by script; no `USER_PASSWORD_AUTH` (its tokens lack the API scopes) |
 | `observability` | 11 alarms to `ops-alerts`, one dashboard (queue, Lambda, pilot split, RDS) | Budget lives in bootstrap so it outlives the demo stack |

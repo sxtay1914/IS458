@@ -80,7 +80,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | `process-checkout/handler.py` | SQS entry point; reports failed messages one by one (`batchItemFailures`) so only they are retried |
 | `process-checkout/service.py` | The checkout rules: validate, price from the DB, pay, place or reject, publish |
 | `process-checkout/repository.py` | The SQL: insert order (UNIQUE key = idempotency), conditional `UPDATE inventory … WHERE qty >= ?` in SKU order (prevents oversell and reduces deadlock risk; conflicts are retried) |
-| `process-checkout/tests/` | 31 tests, including 120 buyers racing for 50 units (exactly 50 confirmed) and duplicate deliveries |
+| `process-checkout/tests/` | 32 tests, including 120 buyers racing for 50 units (exactly 50 confirmed) and duplicate deliveries |
 | `payment-api/handler.py` | Fake payment provider. Same answer for the same checkout; declines `+decline` emails |
 | `notifier/handler.py`, `repository.py` | SNS → claim a `notification_log` row with a lease → send via SES → mark SENT. Duplicate deliveries are suppressed; a crash after sending can cause duplicate email |
 | `notifier/templates/*.html` | The confirmation and rejection emails |
@@ -149,11 +149,11 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | `environments/demo/tests/stack.tftest.hcl` | Whole-stack composition test |
 | `modules/network` | VPC, public/private/isolated subnets in 2 AZs, one NAT, S3 gateway endpoint, security groups |
 | `modules/registry` | ECR repo for store-api (immutable tags, scan on push) |
-| `modules/database` | RDS MySQL 8.0 db.t4g.micro, password managed in Secrets Manager |
+| `modules/database` | RDS MySQL 8.4 db.t4g.micro, password managed in Secrets Manager |
 | `modules/messaging` | SQS checkout queue + DLQ, notifier-failures queue, SNS topics |
 | `modules/analytics` | Reports bucket, Athena workgroup, Glue tables |
 | `modules/functions` | The four Lambdas, their roles, triggers, schedule, SES identities |
-| `modules/eks` | EKS 1.33, t3.medium node group 1/2/3, IRSA roles |
+| `modules/eks` | EKS 1.34, t3.medium node group 1/2/3, IRSA roles |
 | `modules/delivery` | Internal ALB, v1/v2 target groups 90/10, S3 + OAC, CloudFront with VPC origin, `spa-rewrite.js` |
 | `modules/identity` | Cognito pool, hosted UI (classic), PKCE client, API scopes |
 | `modules/observability` | 11 alarms to email, one dashboard |
@@ -218,9 +218,9 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 
 | Area | Evidence |
 | --- | --- |
-| Terraform: bootstrap, 10 service modules + bucket helper, demo stack | 31 `terraform test` runs green against a mocked provider; `fmt` and `validate` clean |
+| Terraform: bootstrap, 10 service modules + bucket helper, demo stack | 33 `terraform test` runs green against a mocked provider; `fmt` and `validate` clean |
 | Database schema and seeds | Flyway V001–V003 migrate cleanly on MySQL 8.0 |
-| Four Lambdas | 56 pytest tests green on real MySQL 8, including the oversell race and duplicate delivery |
+| Four Lambdas | 57 pytest tests green on real MySQL 8, including the oversell race and duplicate delivery |
 | store-api | 24 integration tests green on Testcontainers MySQL; the jar starts locally and serves the catalogue |
 | storefront | 17 unit tests, typecheck and production build green |
 | Browser journeys | 4 Playwright tests green against the mocked backend, 12 of 12 on a 3x repeat |

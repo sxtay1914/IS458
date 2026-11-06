@@ -48,7 +48,7 @@ api-run: ## run store-api locally on :8080 (local MySQL, in-memory messaging)
 	cd apps/store-api && SPRING_PROFILES_ACTIVE=local ./mvnw -B spring-boot:run
 
 db-local-up: ## start local MySQL 8 in Docker
-	docker run -d --name fsdb -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=fashionstore -p 3306:3306 mysql:8.0
+	docker run -d --name fsdb -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=fashionstore -p 3306:3306 mysql:8.4
 	@until docker exec fsdb mysqladmin -proot ping >/dev/null 2>&1; do sleep 2; done; echo "MySQL ready"
 
 db-migrate: ## Flyway migrate the local database

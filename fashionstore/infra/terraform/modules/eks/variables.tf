@@ -8,7 +8,7 @@ variable "cluster_name" {
 
 variable "kubernetes_version" {
   type    = string
-  default = "1.33"
+  default = "1.34"
 }
 
 variable "control_plane_subnet_ids" {
