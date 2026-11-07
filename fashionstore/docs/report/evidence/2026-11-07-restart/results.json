@@ -1,0 +1,308 @@
+{
+  "date": "2026-11-07",
+  "region": "ap-southeast-1",
+  "deployment": "restarted demo with supplied UI and product illustrations",
+  "demo_url_at_test_time": "https://d3b7hq6h7oxk0n.cloudfront.net",
+  "api": {
+    "passed": 31,
+    "failed": 0,
+    "skipped": 4,
+    "test_cases": [
+      {
+        "name": "test_catalogue_and_version_are_public",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[PUT-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[POST-/checkouts]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/checkouts/55e710a6-6c91-4aad-af59-954e07d69a51]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/orders]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_no_token_is_rejected[GET-/orders/1]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[PUT-/cart]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[POST-/checkouts]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/checkouts/55e710a6-6c91-4aad-af59-954e07d69a51]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/orders]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_garbage_token_is_rejected[GET-/orders/1]",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_tampered_signature_is_rejected",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_id_token_is_not_an_access_token",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_real_access_token_is_accepted",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_errors_carry_a_correlation_id",
+        "suite": "security.test_authentication",
+        "status": "passed"
+      },
+      {
+        "name": "test_alb_is_internal_and_resolves_to_private_ips",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_storefront_bucket_refuses_direct_access",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_database_is_not_public",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_cloudfront_serves_site_and_api_over_https",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_spa_deep_links_are_rewritten_but_api_404s_are_not",
+        "suite": "security.test_origin_access",
+        "status": "passed"
+      },
+      {
+        "name": "test_other_shoppers_checkout_and_order_are_invisible",
+        "suite": "security.test_ownership",
+        "status": "passed"
+      },
+      {
+        "name": "test_idempotency_key_of_another_shopper_is_refused",
+        "suite": "security.test_ownership",
+        "status": "passed"
+      },
+      {
+        "name": "test_checkout_confirms_decrements_stock_and_clears_cart",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_retry_with_same_key_returns_same_checkout_and_one_order",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_empty_cart_is_refused",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_unknown_sku_cannot_enter_the_cart",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_declined_payment_is_rejected_without_stock_change",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_pilot_traffic_split_is_about_90_10",
+        "suite": "correctness.test_checkout_live",
+        "status": "passed"
+      },
+      {
+        "name": "test_reconciler_dispatches_checkouts_that_missed_the_queue",
+        "suite": "failure.test_dispatch_recovery",
+        "status": "skipped"
+      },
+      {
+        "name": "test_redriven_message_becomes_an_order",
+        "suite": "failure.test_dlq_redrive",
+        "status": "passed"
+      },
+      {
+        "name": "test_email_is_sent_once_after_notifier_recovers",
+        "suite": "failure.test_notification_recovery",
+        "status": "skipped"
+      },
+      {
+        "name": "test_checkout_survives_payment_outage",
+        "suite": "failure.test_worker_retry",
+        "status": "skipped"
+      },
+      {
+        "name": "test_poison_message_lands_in_dlq_after_five_receives",
+        "suite": "failure.test_worker_retry",
+        "status": "skipped"
+      }
+    ]
+  },
+  "browser": {
+    "passed": 2,
+    "failed": 1,
+    "skipped": 1,
+    "test_cases": [
+      {
+        "name": "browse, sign in with PKCE, buy two bags, see the confirmed order",
+        "status": "failed",
+        "failure": "Add to bag returned an error; browser stayed on /products/BAG-001 instead of reaching /cart. Runtime logs recorded a MySQL deadlock in CartRepository.replace at line 29.",
+        "fixed": false
+      },
+      {
+        "name": "a declined payment shows a clear rejection and no charge",
+        "status": "passed"
+      },
+      {
+        "name": "signed-out shoppers are sent to sign in, not shown an error",
+        "status": "passed"
+      },
+      {
+        "name": "a checkout that fails to send is retried with the same Idempotency-Key",
+        "status": "skipped",
+        "reason": "Intentionally skipped in live mode; requires a fault-injecting backend."
+      }
+    ]
+  },
+  "storefront": {
+    "product_count": 10,
+    "loaded_product_images": 10,
+    "desktop_width": 1440,
+    "mobile_width": 390,
+    "mobile_horizontal_overflow": false,
+    "image_checks": [
+      {
+        "path": "/images/bag-001.svg",
+        "status": 200,
+        "sha256": "f10cb74907cc4440e1b87a6fdecc49338f28001d58577fc240d2de81e9d73ddb",
+        "matches_source": true
+      },
+      {
+        "path": "/images/sho-001.svg",
+        "status": 200,
+        "sha256": "161d7d13c5043ef01105bf02d1faabdbd8a1c3744f97e819de08c5347fba5666",
+        "matches_source": true
+      },
+      {
+        "path": "/images/drs-001.svg",
+        "status": 200,
+        "sha256": "58f81a2778e31253d6a2929d80335babf6a707dc91c7f612637b02df4ba2764e",
+        "matches_source": true
+      },
+      {
+        "path": "/images/drs-002.svg",
+        "status": 200,
+        "sha256": "ff63c94097d809f3e08ba6f4ab9535fa820c510cec133220948559ac769c3322",
+        "matches_source": true
+      },
+      {
+        "path": "/images/btm-002.svg",
+        "status": 200,
+        "sha256": "d88f9bf5e41a996f22c028363a9d23f39e6856c60cb8b0c1e728787cf5ac4e87",
+        "matches_source": true
+      },
+      {
+        "path": "/images/top-002.svg",
+        "status": 200,
+        "sha256": "8440f43dc496c051996129a3a1b00c34e17afe8ce744c104d47b4c20d67e4881",
+        "matches_source": true
+      },
+      {
+        "path": "/images/btm-001.svg",
+        "status": 200,
+        "sha256": "99f6792f573874f92a5792ebec42426153266cbefacc8eadfca39c900715a746",
+        "matches_source": true
+      },
+      {
+        "path": "/images/top-001.svg",
+        "status": 200,
+        "sha256": "b1f6bbc5a02eed1ecc01b8052c90325a54f11228a1be5c47977116030cdccab5",
+        "matches_source": true
+      },
+      {
+        "path": "/images/flash-001.svg",
+        "status": 200,
+        "sha256": "222bf0704735be810643332f6609a4fb2bb7e95a0dc3f3ccfcaa41c0eed41355",
+        "matches_source": true
+      }
+    ],
+    "screenshots": {
+      "desktop": "desktop.png",
+      "mobile": "mobile.png"
+    }
+  },
+  "ci": {
+    "commit": "7d8af9b",
+    "jobs_passed": 6,
+    "run_url": "https://github.com/sxtay1914/IS458/actions/runs/42245480254"
+  },
+  "release": {
+    "requested_tag": "v0.1.0",
+    "status": "withheld",
+    "reason": "The final live browser purchase failed; the cart deadlock remains unfixed."
+  },
+  "teardown": "completed",
+  "teardown_verification": "teardown.json",
+  "retained_foundation": [
+    "Terraform state bucket",
+    "GitHub OIDC roles",
+    "budget alerts"
+  ],
+  "limitations": [
+    "Optional chaos and slow tests were not run.",
+    "k6 load runs and pilot weight changes were not performed.",
+    "The browser purchase failure remains unfixed; passing API tests do not establish a fully successful browser flow.",
+    "Reporting evidence is from the first deployment; report Lambda and Athena were not rerun for this restarted demo.",
+    "Customer email inbox delivery was not checked; test recipients use the SES simulator.",
+    "Retained bootstrap and separate non-demo EBS/Elastic IP resources may still incur charges; see teardown.json."
+  ],
+  "teardown_completed_date": "2026-11-07",
+  "website_status": "removed"
+}

@@ -1,26 +1,28 @@
 # FashionStore — Project Directory Structure
 
-Updated 2026-11-06 from all 13 pages of [FashionStore repository guide.pdf](<FashionStore repository guide.pdf>) and checked against the current local files. This replaces the original proposed tree with the implemented layout. The PDF is a dated reference; this document and the [repository guide](fashionstore/docs/repository-guide.md) record corrections and current repository context.
+Updated 2026-11-07 from all 13 pages of [FashionStore repository guide.pdf](<FashionStore repository guide.pdf>) and checked against the current local files. This replaces the original proposed tree with the implemented layout. The PDF is a dated reference; this document and the [repository guide](fashionstore/docs/repository-guide.md) record corrections and current repository context.
 
 The Git repository is [sxtay1914/IS458](https://github.com/sxtay1914/IS458). The application lives in its `fashionstore/` subdirectory. Paths below are relative to that application directory unless stated otherwise. Run all `make` commands from `fashionstore/` (or use `make -C fashionstore ...` from the repository root).
 
-Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. The first demo is being torn down. The owner then requested a full restart with the new UI/images, to remain running for review with a teardown reminder. Destroy it manually when review is finished; the original five-day runtime is superseded. Part A production architecture is documentation only.
+Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. The complete demo was restarted with the supplied UI/images, tested and torn down on 2026-11-07. The website is removed. The original five-day runtime and leave-running-for-review instructions are superseded. Part A production architecture is documentation only.
 
 ## Technology and recorded status
 
-| Area | Implemented choice | Verification on 2026-11-06 |
+| Area | Implemented choice | Recorded verification through 2026-11-07 |
 | --- | --- | --- |
 | Storefront | React 19, TypeScript, Vite, self-hosted Nunito; supplied UI integrated | 21 unit tests, typecheck and production build passed |
 | Store API | Spring Boot 3.5, Java 21; EKS | 24 MySQL 8.4 integration tests; amd64 Docker image built and deployed |
 | Functions | Four Python 3.12 arm64 Lambdas | 57 pytest tests against local MySQL 8.4; live checkout and report processing passed |
 | Database | RDS MySQL 8.4; Flyway canonical SQL migrations | V001–V003 migrated on RDS with verified TLS; demo inventory seeded |
 | Infrastructure | Terraform; ten service modules plus private-bucket helper | 33 mock-provider test runs; AWS demo applied with two Free-plan-eligible t3.small workers |
-| Workloads | Kubernetes, Kustomize and Helm | Two v1 pods and one v2 pod became ready; three add-ons running |
-| Browser tests | Playwright | Four mock journeys and three live journeys passed; one live fault-injection journey intentionally skipped |
-| Live API checks | pytest | 31 passed, four optional chaos/slow tests skipped |
+| Workloads | Kubernetes, Kustomize and Helm | Two v1 pods and one v2 pod became ready; app and three add-ons subsequently removed for teardown |
+| Browser tests | Playwright | Four mock journeys passed; restarted demo: two passed, one failed on a cart database deadlock, one intentionally skipped |
+| Live API checks | pytest | Restarted demo: 31 passed, four optional chaos/slow tests skipped |
 | Reporting | Lambda, S3 and Athena | Sales and stock CSVs generated; daily revenue query succeeded |
 
-The supplied UI is deployed and its checkout retry fix is preserved. Screenshots and sanitized results are in [deployment evidence](fashionstore/docs/report/evidence/2026-11-06/results.json). The first demo teardown is in progress after successful checks; the complete demo will be restarted for owner review. The evidence currently records the first deployment. The budget/state/GitHub OIDC bootstrap is separate from the demo stack and is retained.
+The supplied UI was deployed with its checkout retry fix preserved. All nine supplied image URLs returned HTTP 200 and matched their source hashes; ten product images loaded with no mobile horizontal overflow. [Restart evidence](fashionstore/docs/report/evidence/2026-11-07-restart/results.json) records the latest checks and the failed browser purchase; [first-demo evidence](fashionstore/docs/report/evidence/2026-11-06/results.json) remains historical. The cart deadlock is unfixed and the successful-release `v0.1.0` tag is withheld. [Teardown verification](fashionstore/docs/report/evidence/2026-11-07-restart/teardown.json) confirms empty demo Terraform state and 23 checks with zero remaining resources or errors. The budget/state/GitHub OIDC bootstrap is retained.
+
+Separate non-demo resources remain: three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP. The volumes and Elastic IP can still incur charges; demo cleanup does not establish zero account spending.
 
 ## Repository boundary
 
@@ -206,10 +208,15 @@ This lists the current source/configuration files, including local uncommitted f
     ├── docs/
     │   ├── report/
     │   │   └── evidence/
-    │   │       └── 2026-11-06/
-    │   │           ├── new-ui-desktop.png
-    │   │           ├── new-ui-mobile.png
-    │   │           └── results.json
+    │   │       ├── 2026-11-06/
+    │   │       │   ├── new-ui-desktop.png
+    │   │       │   ├── new-ui-mobile.png
+    │   │       │   └── results.json
+    │   │       └── 2026-11-07-restart/
+    │   │           ├── desktop.png
+    │   │           ├── mobile.png
+    │   │           ├── results.json
+    │   │           └── teardown.json
     │   ├── implementation-plan.md
     │   └── repository-guide.md
     ├── functions/
@@ -476,7 +483,7 @@ This lists the current source/configuration files, including local uncommitted f
 | `platform` | Versioned Kubernetes deployments, services, TargetGroupBindings, HPA/disruption budget, database Jobs and Helm values |
 | `scripts` | Six implemented packaging, configuration, image, storefront and test-user helpers; Makefile supplies deployment orchestration |
 | `tests` | Browser, live security/correctness/recovery, infrastructure and k6 checks; unit/component tests stay beside their source |
-| `docs` | Repository guide and implementation plan; report/runbook/evidence documents remain future work |
+| `docs` | Repository guide, implementation plan and deployment screenshots/results; full report and runbook remain future work |
 
 ### AWS-to-directory mapping
 
@@ -527,26 +534,26 @@ This lists the current source/configuration files, including local uncommitted f
 
 ## Deployment sequence and remaining work
 
-The Makefile and six scripts exist; these are implemented commands awaiting first AWS verification, rather than proposed automation interfaces.
+The Makefile and six scripts exist; these commands were exercised during the first AWS demo and the restart with the supplied UI/images. Restart testing and verified demo teardown are complete; the failed browser purchase remains a known issue.
 
 1. From the repository root, `cd fashionstore`. Configure bootstrap for `github_repository = "sxtay1914/IS458"`, alert recipients and the intended AWS account/region. Run `make bootstrap`; preserve its local state securely outside Git. Set GitHub repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET` from the bootstrap outputs.
 2. Copy/fill `backend.hcl` and `terraform.tfvars` in `infra/terraform/environments/demo` using their examples. Set owner, expiry, SES addresses, EKS admin ARNs and allowed public endpoint CIDRs. Run `make init-demo deploy-demo`; the plan target packages the Lambdas first.
 3. Verify SES sender and recipient addresses. Run `make k8s-config addons db-migrate-remote db-seed-remote`. EKS is needed before the application deployment so its Jobs can reach isolated RDS. Run `SMOKE_EMAIL=<verified-address> make smoke`.
-4. Build/push distinct API tags: `make push-api TAG=v1` and `make push-api TAG=v2`; then `make k8s-config V1_TAG=v1 V2_TAG=v2 k8s-apply`. The image build has not yet been demonstrated in the guide.
+4. Build/push distinct API tags: `make push-api TAG=v1` and `make push-api TAG=v2`; then `make k8s-config V1_TAG=v1 V2_TAG=v2 k8s-apply`. The amd64 image build and v1/v2 rollout passed during the first demo.
 5. Run `make deploy-storefront verify-private`. If the VPC origin fails, investigate the documented CloudFront service-managed security-group input before proceeding.
-6. Create verified test shoppers with `make test-users`, configure the `FS_*`/`E2E_*` variables in the test README and run `make live-test e2e-live`. Hosted-UI automation still needs its first real Cognito run.
+6. Create verified test shoppers with `make test-users`, configure the `FS_*`/`E2E_*` variables in the test README and run `make live-test e2e-live`. Hosted-UI PKCE automation passed during the first demo.
 7. Run bounded chaos, load and pilot-weight demonstrations, manually invoke the report with `{"date":"today"}`, run Athena queries and collect evidence and billing data.
-8. After the owner finishes reviewing the restarted demo, export evidence and run the plan's manual teardown checklist. `make destroy-demo` removes bindings, uninstalls add-ons and destroys the disposable Terraform stack. Check residual resources and charges; retain bootstrap only while its state is still needed, then remove it last. RDS uses no final snapshot: export any needed data first.
+8. After testing, export evidence and follow the plan's staged manual teardown checklist, retaining Lambda execution permissions until its ENIs are released. `make destroy-demo` removes bindings, uninstalls add-ons and runs one full Terraform destroy; it does not implement the staged sequence. Check residual resources and charges; retain bootstrap only while its state is still needed, then remove it last. RDS uses no final snapshot: export any needed data first.
 
 ### CI in the current monorepo
 
-Workflow definitions are at the Git repository root's `.github/workflows/`, where GitHub discovers them after they are pushed. Shell steps default to `fashionstore/`; explicit working directories, dependency caches and artifact paths use repository-relative paths. The Terraform plan workflow watches the application infrastructure/functions, packaging script, Makefile and its own workflow file. It requires `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`; no GitHub runner execution has been verified locally.
+Workflow definitions are at the Git repository root's `.github/workflows/`, where GitHub discovers them after they are pushed. Shell steps default to `fashionstore/`; explicit working directories, dependency caches and artifact paths use repository-relative paths. The Terraform plan workflow watches the application infrastructure/functions, packaging script, Makefile and its own workflow file. It requires `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`; GitHub CI passed all six jobs on the pushed UI/image build.
 
 The CI definition checks/builds; it does not push ECR images or deploy Kubernetes. The plan definition runs a Terraform plan when configured; it does not post a PR comment. Bootstrap creates an apply role, but no CD workflow is implemented. Deployments currently use manual `make` commands.
 
 ## Planned documentation, not current source
 
-The original outline's `local/`, `docs/architecture/`, `docs/runbooks/`, `docs/demo/`, `docs/report/`, report evidence folders and root `tests/integration/`/`fixtures/` directories are not present. Do not treat them as completed deliverables. Local MySQL currently uses Makefile targets, not Docker Compose; integration tests live with the API and functions. Add report structure, requirement/test traceability, architecture assets, runbooks, cost records and curated evidence when that work is performed. An `evidence/` directory does not yet exist.
+The original outline's `local/`, `docs/architecture/`, `docs/runbooks/`, `docs/demo/` and root `tests/integration/`/`fixtures/` directories are not present. Do not treat them as completed deliverables. Local MySQL currently uses Makefile targets, not Docker Compose; integration tests live with the API and functions. Add report structure, requirement/test traceability, architecture assets, runbooks, cost records and curated evidence when that work is performed. Deployment screenshots and sanitized results now exist in `docs/report/evidence/2026-11-06/` and `2026-11-07-restart/`; the full submission report is still outstanding.
 
 The old proposed scripts (such as `deploy-demo.sh`, `provision-infra.sh` and `collect-evidence.sh`) are not current interfaces. Use the Makefile targets and the six real scripts in the tree. No deployment workflow or separate per-function READMEs are present.
 

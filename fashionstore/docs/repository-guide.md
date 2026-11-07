@@ -1,9 +1,9 @@
 # Repository guide
 
 What every folder and file is for, what is finished, and what is left.
-Status as of 2026-11-06. "A" is the platform builder, "B" is the data and app builder.
+Status as of 2026-11-07. "A" is the platform builder, "B" is the data and app builder.
 
-Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. The latest verification includes 24 API integration tests, 57 Lambda tests, 21 storefront unit tests, four mocked browser journeys, 31 live API checks and three live browser journeys. Four optional live API tests and one browser fault-injection journey were skipped. Sanitized AWS results and screenshots are under `docs/report/evidence/2026-11-06/`; the first demo teardown is in progress, followed by an owner-requested full restart with the new UI/images. The restarted demo remains running for owner review with a manual teardown reminder.
+Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. Local verification includes 24 API integration tests, 57 Lambda tests, 21 storefront unit tests and four mocked browser journeys. The restarted demo passed 31 live API tests, with four optional tests skipped. Its final browser run passed two journeys, failed one on a cart database deadlock and intentionally skipped one. All nine supplied image files passed HTTP/hash checks; ten product images loaded with no mobile horizontal overflow. [Restart evidence](report/evidence/2026-11-07-restart/results.json) records these results; [first-demo evidence](report/evidence/2026-11-06/results.json) is historical. The demo was torn down on 2026-11-07 and the website is removed. The cart issue remains unfixed and the successful-release `v0.1.0` tag is withheld.
 
 ## How the pieces fit
 
@@ -39,14 +39,15 @@ reads checkout status from MySQL; SNS does not push status into the API.
 | `../.github/workflows/ci.yml` (Git root) | On every PR: Terraform fmt/validate/test, Lambda pytest on a MySQL service, Kustomize render, store-api tests + Docker build, storefront tests + build, Playwright e2e, k6 script parse |
 | `../.github/workflows/terraform-plan.yml` (Git root) | On PRs touching application infrastructure/functions or plan tooling: assumes the read-only GitHub OIDC role and runs `terraform plan` (no PR comment) |
 
-The workflow files are at the Git root under `.github/workflows/`, with shell steps running from `fashionstore/` and action input paths relative to the Git root. GitHub can discover them once pushed; actual runner execution is not yet verified. The AWS plan job requires repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`. There is no CD workflow.
+The workflow files are at the Git root under `.github/workflows/`, with shell steps running from `fashionstore/` and action input paths relative to the Git root. They are pushed, and GitHub CI passed all six jobs. The AWS plan job requires repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`. There is no CD workflow.
 
 ## docs/
 
 | File | What it does |
 | --- | --- |
-| `implementation-plan.md` | Locked decisions, who does what, the phased demo sequence with exit criteria and manual teardown after owner review, the manual teardown checklist, risks |
+| `implementation-plan.md` | Locked decisions, who does what, the phased demo sequence with exit criteria and staged manual teardown after testing, risks |
 | `repository-guide.md` | This file |
+| `report/evidence/` | Historical first-demo results and screenshots, restarted-demo results including the failed browser purchase, and final teardown verification |
 
 ## contracts/ — the agreement between the two halves
 
@@ -219,34 +220,36 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | Area | Evidence |
 | --- | --- |
 | Terraform: bootstrap, 10 service modules + bucket helper, demo stack | 33 `terraform test` runs green against a mocked provider; `fmt` and `validate` clean |
-| Database schema and seeds | Flyway V001–V003 migrate cleanly on MySQL 8.0 |
-| Four Lambdas | 57 pytest tests green on real MySQL 8, including the oversell race and duplicate delivery |
-| store-api | 24 integration tests green on Testcontainers MySQL; the jar starts locally and serves the catalogue |
+| Database schema and seeds | Flyway V001–V003 migrated RDS MySQL 8.4 with certificate-verified TLS |
+| Four Lambdas | 57 pytest tests green on real MySQL 8.4, including the oversell race and duplicate delivery |
+| store-api | 24 integration tests green on Testcontainers MySQL 8.4; amd64 image was deployed with healthy v1/v2 pods; final browser run exposed a cart deadlock |
 | storefront | 21 unit tests, typecheck and production build green |
-| Browser journeys | 4 Playwright tests green against the mocked backend, 12 of 12 on a 3x repeat |
-| Live tests and load scripts | Written; all 35 live tests skip cleanly offline; the public-endpoint auth tests passed against a locally running store-api |
-| Kubernetes, Helm, deploy scripts, CI | Written; the overlay renders with `kubectl kustomize` |
+| Browser journeys | 4 mocked journeys passed; restarted demo: 2 passed, 1 cart-deadlock failure, 1 intentionally skipped. First demo had 3 live passes |
+| Live tests and load scripts | Restarted demo: 31 live API tests passed; 4 optional chaos/slow tests skipped. k6 load runs remain outstanding |
+| Kubernetes, Helm, deploy scripts, CI | Kubernetes workloads and three Helm add-ons deployed successfully; GitHub CI passed all six jobs |
 
 ## What still needs to be done
 
-Bootstrap is complete. The first demo passed the live API/browser checks and is being removed. The owner requested a complete restart for review, followed by a teardown reminder; the original five-day runtime is superseded. The repository and monorepo workflow configuration already exist; the workflow changes still need pushing and a GitHub run.
+Demo teardown is complete: [verification evidence](report/evidence/2026-11-07-restart/teardown.json) records empty Terraform state and 23 checks with zero remaining resources or errors. Bootstrap state, GitHub OIDC roles and budget alerts are retained. Fix the cart deadlock and rerun the failed purchase journey before issuing the successful-release tag. The original five-day runtime and leave-running-for-review instructions are superseded. Workflow definitions are pushed and CI passed all six jobs.
+
+The separate scan across 17 regions found no load balancers or nonterminated demo EC2 instances. Three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP remain outside the demo; storage and Elastic IP charges may continue. Redshift inventory was unavailable (`OptInRequired`), so this is not a claim that every account service was inspected.
 
 | # | Step | Who | Notes |
 | --- | --- | --- | --- |
-| 1 | Use the existing `sxtay1914/IS458` repo; configure bootstrap `github_repository` accordingly. Set `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET` after step 2; push the root-level workflows and verify their first GitHub run | A | Repo already exists; current local source includes changes beyond the earlier push |
+| 1 | Use the existing `sxtay1914/IS458` repo; configure bootstrap `github_repository` accordingly. Set `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET` after step 2; push the root-level workflows and verify their first GitHub run | A | Repository, UI and supplied image updates are pushed |
 | 2 | Bootstrap completed; fill `environments/demo/terraform.tfvars` (owner, `expires_on`, SES sender and recipients, your IAM ARN in `eks_admin_principal_arns`, your IP in `eks_public_access_cidrs`) | A | |
-| 3 | `make init-demo deploy-demo` | A | **Never applied yet.** Expect a few fixes on the first real apply |
+| 3 | `make init-demo deploy-demo` | A | First deployment and complete restart were applied; demo teardown completed 2026-11-07 |
 | 4 | Click the SES verification emails for sender and recipients | B | Unverified recipients get no email in the sandbox |
 | 5 | `make k8s-config addons db-migrate-remote db-seed-remote`, then `make smoke` | A | |
-| 6 | `make push-api TAG=v1` and `TAG=v2`, then `make k8s-config V1_TAG=v1 V2_TAG=v2 k8s-apply` | B builds, A applies | **The Docker image has never been built**: Docker Hub and ECR Public were blocked here |
+| 6 | `make push-api TAG=v1` and `TAG=v2`, then `make k8s-config V1_TAG=v1 V2_TAG=v2 k8s-apply` | B builds, A applies | amd64 image built, pushed as v1/v2 and rolled out successfully |
 | 7 | `make deploy-storefront verify-private` | B | If `/api/*` returns 502/504, add the CloudFront VPC-origin SG to `alb_extra_source_security_group_ids` |
-| 8 | `make test-users`, then `make live-test e2e-live` | B | First real run of `get-token.mjs`; the hosted-UI field names are an educated guess |
+| 8 | `make test-users`, then `make live-test e2e-live` | B | Restart: 31 API passes/4 skips; browser 2 passes/1 cart-deadlock failure/1 skip. Hosted-UI callback timing fix verified |
 | 9 | Chaos and slow tests: `FS_ALLOW_CHAOS=1 FS_RUN_SLOW=1 make live-test`, one at a time | A + B | They change the stack and restore it |
 | 10 | Load: `make load-browse load-checkout load-flash PROFILE=smoke`, then `PROFILE=demo` | A + B | k6 has not been run here; reseed FLASH-001 before each flash sale |
 | 11 | Pilot: set weights 50/50, then 0/100 and back in tfvars, `terraform apply`, record the target-group metrics | A | |
 | 12 | Report: invoke `report` with `{"date": "today"}`, run the Athena named queries | B | |
-| 13 | Save evidence (screenshots, k6 summaries, CloudWatch graphs, Cost Explorer, `terraform state list`) | A + B | No `evidence/` folder yet |
-| 14 | After owner review: teardown checklist in the plan, then check the bill | A | |
+| 13 | Save evidence (screenshots, k6 summaries, CloudWatch graphs, Cost Explorer, `terraform state list`) | A + B | Available sanitized results/screenshots are under `docs/report/evidence/2026-11-06/` and `2026-11-07-restart/`; load/billing evidence remains outstanding |
+| 14 | After tests: staged teardown checklist in the plan, then check residual resources and charges | A | Completed; empty demo state and 23 checks with zero remaining resources/errors. Bootstrap and the separate non-demo resources above remain |
 
 Gaps that are known and not built: no CD workflow (deploys are `make` commands run by hand), and
 the Kubernetes YAML has only been rendered and parsed, not schema-checked with kubeconform.

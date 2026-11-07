@@ -1,0 +1,118 @@
+{
+  "date": "2026-11-07",
+  "checked_at": "2026-11-07T02:00:40.865079+00:00",
+  "region": "ap-southeast-1",
+  "scope": "FashionStore demo; retained bootstrap and unrelated resources excluded",
+  "complete": true,
+  "website_status": "removed",
+  "terraform": {
+    "state_resource_count": 0,
+    "empty_state_confirmations": 2,
+    "staged_apply_destroy_counts": [
+      25,
+      38,
+      78
+    ]
+  },
+  "checks": {
+    "rds_instances": {
+      "remaining_count": 0
+    },
+    "rds_snapshots": {
+      "remaining_count": 0
+    },
+    "rds_automated_backups": {
+      "remaining_count": 0
+    },
+    "eks_clusters": {
+      "remaining_count": 0
+    },
+    "ec2_instances": {
+      "remaining_count": 0
+    },
+    "nat_gateways": {
+      "remaining_count": 0
+    },
+    "elastic_ip": {
+      "remaining_count": 0
+    },
+    "vpc": {
+      "remaining_count": 0
+    },
+    "network_interfaces": {
+      "remaining_count": 0
+    },
+    "load_balancers": {
+      "remaining_count": 0
+    },
+    "lambda_functions": {
+      "remaining_count": 0
+    },
+    "s3_buckets": {
+      "remaining_count": 0
+    },
+    "ecr_repositories": {
+      "remaining_count": 0
+    },
+    "sqs_queues": {
+      "remaining_count": 0
+    },
+    "sns_topics": {
+      "remaining_count": 0
+    },
+    "cognito_user_pool": {
+      "remaining_count": 0
+    },
+    "cloudwatch_log_groups": {
+      "remaining_count": 0
+    },
+    "iam_roles": {
+      "remaining_count": 0
+    },
+    "temporary_operator": {
+      "remaining_count": 0
+    },
+    "cloudfront_distribution": {
+      "remaining_count": 0
+    },
+    "cloudfront_vpc_origin": {
+      "remaining_count": 0
+    },
+    "ses_sender_identity": {
+      "remaining_count": 0
+    },
+    "rds_managed_secret": {
+      "remaining_count": 0
+    }
+  },
+  "check_count": 23,
+  "remaining_count": 0,
+  "error_count": 0,
+  "manual_cleanup": [
+    "Temporary IAM operator and its access keys removed.",
+    "Leftover RDS error log group removed.",
+    "Orphaned CloudFront service security group removed only after its VPC origin and network interfaces were gone; demo VPC then deleted."
+  ],
+  "retained_foundation": [
+    "Terraform state bucket",
+    "GitHub OIDC roles",
+    "budget alerts"
+  ],
+  "broader_inventory": {
+    "regions_checked": 17,
+    "load_balancers_remaining": 0,
+    "nonterminated_demo_ec2_instances": 0,
+    "non_demo_resources_remaining": {
+      "stopped_assignment3_ec2_instances": 3,
+      "gp3_volumes": {
+        "count": 3,
+        "size_gib_each": 8
+      },
+      "unattached_elastic_ips": 1
+    },
+    "limitations": [
+      "Redshift inventory unavailable: OptInRequired."
+    ]
+  },
+  "cost_note": "Retained bootstrap and separate non-demo resources remain. EBS storage and Elastic IP charges may continue; this is not a zero-spending claim."
+}

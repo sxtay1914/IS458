@@ -216,10 +216,18 @@
       "548.9"
     ]
   ],
-  "teardown": "in progress",
+  "teardown": "completed",
   "limitations": [
     "Optional chaos and slow tests were not run.",
     "Browser fault-injection retry is covered by the mocked journey and unit tests.",
     "Customer email inbox delivery was not checked; test recipients use the SES simulator."
+  ],
+  "teardown_completed_date": "2026-11-07",
+  "website_status": "removed",
+  "teardown_verification": "../2026-11-07-restart/teardown.json",
+  "retained_foundation": [
+    "Terraform state bucket",
+    "GitHub OIDC roles",
+    "budget alerts"
   ]
 }
