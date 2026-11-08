@@ -21,12 +21,12 @@ Run commands below from `fashionstore/` (`cd fashionstore` from the IS458 Git ro
 | `functions` (process-checkout, payment-api, notifier, report) | Built; 57 pytest tests green against real MySQL |
 | `contracts` (OpenAPI, event schemas, examples) | Built; validated in Lambda and store-api tests |
 | `platform` (Kustomize base/overlay, Flyway + seed Jobs, Helm values) | EKS deployment, migration and seed Jobs verified; demo infrastructure subsequently removed |
-| `apps/store-api` (Spring Boot 3.5, Java 21) | 24 MySQL 8.4 integration tests passed; amd64 image built and deployed |
+| `apps/store-api` (Spring Boot 3.5, Java 21) | 27 MySQL 8.4 integration tests passed after the local cart fix; prior amd64 build was deployed |
 | `apps/storefront` (React 19, Vite) | 21 unit tests, typecheck and production build passed |
 | `tests/e2e` (Playwright) | 4 mocked journeys passed; restarted demo: 2 passed, 1 failed on a cart database deadlock, 1 intentionally skipped |
 | `tests/security`, `correctness`, `failure` (pytest), `tests/load` (k6) | Restarted demo: 31 live API tests passed, 4 optional chaos/slow tests skipped; k6 runs remain outstanding |
 
-The demo was torn down on 2026-11-07 and the website is removed. [Teardown verification](docs/report/evidence/2026-11-07-restart/teardown.json) confirms empty demo Terraform state and 23 checks with zero remaining resources or errors. Bootstrap remains (state bucket, GitHub OIDC roles and budget alerts). [Restart evidence](docs/report/evidence/2026-11-07-restart/results.json) records the supplied UI/image checks and the browser failure. The cart deadlock remains unfixed, so the successful-release `v0.1.0` tag is withheld. [First-demo results](docs/report/evidence/2026-11-06/results.json) remain historical evidence.
+The demo was torn down on 2026-11-07 and the website is removed. [Teardown verification](docs/report/evidence/2026-11-07-restart/teardown.json) confirms empty demo Terraform state and 23 checks with zero remaining resources or errors. Bootstrap remains (state bucket, GitHub OIDC roles and budget alerts). [Restart evidence](docs/report/evidence/2026-11-07-restart/results.json) records the supplied UI/image checks and the browser failure. The cart deadlock was fixed and retested locally on 2026-11-08: [fix evidence](docs/report/evidence/2026-11-08-cart-deadlock/results.json) records a failing baseline and 27 passing API tests. Post-fix AWS/browser testing remains pending, so the successful-release `v0.1.0` tag is withheld. [First-demo results](docs/report/evidence/2026-11-06/results.json) remain historical evidence.
 
 Separate non-demo resources remain: three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP. Storage and Elastic IP charges may continue.
 

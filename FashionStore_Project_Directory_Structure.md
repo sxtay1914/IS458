@@ -1,6 +1,6 @@
 # FashionStore — Project Directory Structure
 
-Updated 2026-11-07 from all 13 pages of [FashionStore repository guide.pdf](<FashionStore repository guide.pdf>) and checked against the current local files. This replaces the original proposed tree with the implemented layout. The PDF is a dated reference; this document and the [repository guide](fashionstore/docs/repository-guide.md) record corrections and current repository context.
+Updated 2026-11-08 from all 13 pages of [FashionStore repository guide.pdf](<FashionStore repository guide.pdf>) and checked against the current local files. This replaces the original proposed tree with the implemented layout. The PDF is a dated reference; this document and the [repository guide](fashionstore/docs/repository-guide.md) record corrections and current repository context.
 
 The Git repository is [sxtay1914/IS458](https://github.com/sxtay1914/IS458). The application lives in its `fashionstore/` subdirectory. Paths below are relative to that application directory unless stated otherwise. Run all `make` commands from `fashionstore/` (or use `make -C fashionstore ...` from the repository root).
 
@@ -8,10 +8,10 @@ Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100
 
 ## Technology and recorded status
 
-| Area | Implemented choice | Recorded verification through 2026-11-07 |
+| Area | Implemented choice | Recorded verification through 2026-11-08 |
 | --- | --- | --- |
 | Storefront | React 19, TypeScript, Vite, self-hosted Nunito; supplied UI integrated | 21 unit tests, typecheck and production build passed |
-| Store API | Spring Boot 3.5, Java 21; EKS | 24 MySQL 8.4 integration tests; amd64 Docker image built and deployed |
+| Store API | Spring Boot 3.5, Java 21; EKS | 27 MySQL 8.4 integration tests passed after the local cart fix; prior amd64 build was deployed |
 | Functions | Four Python 3.12 arm64 Lambdas | 57 pytest tests against local MySQL 8.4; live checkout and report processing passed |
 | Database | RDS MySQL 8.4; Flyway canonical SQL migrations | V001–V003 migrated on RDS with verified TLS; demo inventory seeded |
 | Infrastructure | Terraform; ten service modules plus private-bucket helper | 33 mock-provider test runs; AWS demo applied with two Free-plan-eligible t3.small workers |
@@ -20,7 +20,7 @@ Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100
 | Live API checks | pytest | Restarted demo: 31 passed, four optional chaos/slow tests skipped |
 | Reporting | Lambda, S3 and Athena | Sales and stock CSVs generated; daily revenue query succeeded |
 
-The supplied UI was deployed with its checkout retry fix preserved. All nine supplied image URLs returned HTTP 200 and matched their source hashes; ten product images loaded with no mobile horizontal overflow. [Restart evidence](fashionstore/docs/report/evidence/2026-11-07-restart/results.json) records the latest checks and the failed browser purchase; [first-demo evidence](fashionstore/docs/report/evidence/2026-11-06/results.json) remains historical. The cart deadlock is unfixed and the successful-release `v0.1.0` tag is withheld. [Teardown verification](fashionstore/docs/report/evidence/2026-11-07-restart/teardown.json) confirms empty demo Terraform state and 23 checks with zero remaining resources or errors. The budget/state/GitHub OIDC bootstrap is retained.
+The supplied UI was deployed with its checkout retry fix preserved. All nine supplied image URLs returned HTTP 200 and matched their source hashes; ten product images loaded with no mobile horizontal overflow. [Restart evidence](fashionstore/docs/report/evidence/2026-11-07-restart/results.json) records that deployment's checks and failed browser purchase; [first-demo evidence](fashionstore/docs/report/evidence/2026-11-06/results.json) remains historical. The cart deadlock was fixed and retested locally on 2026-11-08: [fix evidence](fashionstore/docs/report/evidence/2026-11-08-cart-deadlock/results.json) records the failing baseline and 27 passing API tests. Post-fix AWS/browser testing remains pending, so the successful-release `v0.1.0` tag is withheld. [Teardown verification](fashionstore/docs/report/evidence/2026-11-07-restart/teardown.json) confirms empty demo Terraform state and 23 checks with zero remaining resources or errors. The budget/state/GitHub OIDC bootstrap is retained.
 
 Separate non-demo resources remain: three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP. The volumes and Elastic IP can still incur charges; demo cleanup does not establish zero account spending.
 
@@ -103,6 +103,7 @@ This lists the current source/configuration files, including local uncommitted f
     │   │   │       │       └── fashionstore/
     │   │   │       │           ├── AbstractIntegrationTest.java
     │   │   │       │           ├── CartApiTest.java
+    │   │   │       │           ├── CartConcurrencyTest.java
     │   │   │       │           ├── CatalogApiTest.java
     │   │   │       │           ├── CheckoutApiTest.java
     │   │   │       │           ├── OrdersAndReconcilerTest.java
@@ -212,11 +213,13 @@ This lists the current source/configuration files, including local uncommitted f
     │   │       │   ├── new-ui-desktop.png
     │   │       │   ├── new-ui-mobile.png
     │   │       │   └── results.json
-    │   │       └── 2026-11-07-restart/
-    │   │           ├── desktop.png
-    │   │           ├── mobile.png
-    │   │           ├── results.json
-    │   │           └── teardown.json
+    │   │       ├── 2026-11-07-restart/
+    │   │       │   ├── desktop.png
+    │   │       │   ├── mobile.png
+    │   │       │   ├── results.json
+    │   │       │   └── teardown.json
+    │   │       └── 2026-11-08-cart-deadlock/
+    │   │           └── results.json
     │   ├── implementation-plan.md
     │   └── repository-guide.md
     ├── functions/
@@ -534,7 +537,7 @@ This lists the current source/configuration files, including local uncommitted f
 
 ## Deployment sequence and remaining work
 
-The Makefile and six scripts exist; these commands were exercised during the first AWS demo and the restart with the supplied UI/images. Restart testing and verified demo teardown are complete; the failed browser purchase remains a known issue.
+The Makefile and six scripts exist; these commands were exercised during the first AWS demo and the restart with the supplied UI/images. Restart testing and verified demo teardown are complete. The cart fix passed local regression tests; the failed purchase journey still needs a post-fix live browser run.
 
 1. From the repository root, `cd fashionstore`. Configure bootstrap for `github_repository = "sxtay1914/IS458"`, alert recipients and the intended AWS account/region. Run `make bootstrap`; preserve its local state securely outside Git. Set GitHub repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET` from the bootstrap outputs.
 2. Copy/fill `backend.hcl` and `terraform.tfvars` in `infra/terraform/environments/demo` using their examples. Set owner, expiry, SES addresses, EKS admin ARNs and allowed public endpoint CIDRs. Run `make init-demo deploy-demo`; the plan target packages the Lambdas first.

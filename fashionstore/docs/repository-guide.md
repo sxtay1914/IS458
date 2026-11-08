@@ -1,9 +1,9 @@
 # Repository guide
 
 What every folder and file is for, what is finished, and what is left.
-Status as of 2026-11-07. "A" is the platform builder, "B" is the data and app builder.
+Status as of 2026-11-08. "A" is the platform builder, "B" is the data and app builder.
 
-Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. Local verification includes 24 API integration tests, 57 Lambda tests, 21 storefront unit tests and four mocked browser journeys. The restarted demo passed 31 live API tests, with four optional tests skipped. Its final browser run passed two journeys, failed one on a cart database deadlock and intentionally skipped one. All nine supplied image files passed HTTP/hash checks; ten product images loaded with no mobile horizontal overflow. [Restart evidence](report/evidence/2026-11-07-restart/results.json) records these results; [first-demo evidence](report/evidence/2026-11-06/results.json) is historical. The demo was torn down on 2026-11-07 and the website is removed. The cart issue remains unfixed and the successful-release `v0.1.0` tag is withheld.
+Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. Local verification includes 27 API integration tests, 57 Lambda tests, 21 storefront unit tests and four mocked browser journeys. The restarted demo passed 31 live API tests, with four optional tests skipped. Its final browser run passed two journeys, failed one on a cart database deadlock and intentionally skipped one. All nine supplied image files passed HTTP/hash checks; ten product images loaded with no mobile horizontal overflow. [Restart evidence](report/evidence/2026-11-07-restart/results.json) records these results; [first-demo evidence](report/evidence/2026-11-06/results.json) is historical. The demo was torn down on 2026-11-07 and the website is removed. The cart issue was fixed and retested locally on 2026-11-08; [fix evidence](report/evidence/2026-11-08-cart-deadlock/results.json) records the failing baseline and passing regression tests. Post-fix AWS/browser testing remains pending and the successful-release `v0.1.0` tag is withheld.
 
 ## How the pieces fit
 
@@ -104,7 +104,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | `auth/CognitoAccessTokenValidator.java` | Accepts only access tokens issued to our client (rejects ID tokens) |
 | `auth/UserEmailResolver.java`, `CurrentUser.java` | Who is calling and their email |
 | `catalog/*` | `GET /api/products`, `/api/products/{sku}` with stock |
-| `cart/*` | `GET/PUT /api/cart`, stored in MySQL |
+| `cart/*` | `GET/PUT /api/cart`, stored in MySQL; replacement uses `READ_COMMITTED` to avoid empty-cart gap-lock deadlocks while preserving atomic writes |
 | `checkout/CheckoutService.java` | Save PENDING + clear cart in one transaction, then send to SQS. Same Idempotency-Key = same checkout |
 | `checkout/CheckoutController.java`, `CheckoutRepository.java`, `CheckoutStatus.java` | The endpoints and SQL for checkouts |
 | `orders/*` | `GET /api/orders`, `/api/orders/{id}`, only your own |
@@ -113,7 +113,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | `common/*` | Error JSON with `correlation_id`, the `X-Correlation-Id` filter, `/api/version` (v1 or v2) |
 | `src/main/resources/application.yml` | Maps environment variables (from the Kubernetes ConfigMap) to settings; readiness checks the DB |
 | `src/main/resources/application-local.yml` | Local profile: no AWS, messages kept in memory |
-| `src/test/java/...` | 24 integration tests on a real MySQL container (security, cart, idempotency, SQS outage, reconciler, ownership) |
+| `src/test/java/...` | 27 integration tests on a real MySQL 8.4 container, including `CartConcurrencyTest` for empty-cart races, rollback and same-shopper replacement |
 | `README.md` | Package map and how the checkout stays correct |
 
 ## apps/storefront/ — the website (React 19, Vite)
@@ -222,7 +222,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | Terraform: bootstrap, 10 service modules + bucket helper, demo stack | 33 `terraform test` runs green against a mocked provider; `fmt` and `validate` clean |
 | Database schema and seeds | Flyway V001–V003 migrated RDS MySQL 8.4 with certificate-verified TLS |
 | Four Lambdas | 57 pytest tests green on real MySQL 8.4, including the oversell race and duplicate delivery |
-| store-api | 24 integration tests green on Testcontainers MySQL 8.4; amd64 image was deployed with healthy v1/v2 pods; final browser run exposed a cart deadlock |
+| store-api | 27 integration tests passed on Testcontainers MySQL 8.4 after the local cart fix; baseline reproduced the deadlock; post-fix AWS/browser retest pending |
 | storefront | 21 unit tests, typecheck and production build green |
 | Browser journeys | 4 mocked journeys passed; restarted demo: 2 passed, 1 cart-deadlock failure, 1 intentionally skipped. First demo had 3 live passes |
 | Live tests and load scripts | Restarted demo: 31 live API tests passed; 4 optional chaos/slow tests skipped. k6 load runs remain outstanding |
@@ -230,7 +230,7 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 
 ## What still needs to be done
 
-Demo teardown is complete: [verification evidence](report/evidence/2026-11-07-restart/teardown.json) records empty Terraform state and 23 checks with zero remaining resources or errors. Bootstrap state, GitHub OIDC roles and budget alerts are retained. Fix the cart deadlock and rerun the failed purchase journey before issuing the successful-release tag. The original five-day runtime and leave-running-for-review instructions are superseded. Workflow definitions are pushed and CI passed all six jobs.
+Demo teardown is complete: [verification evidence](report/evidence/2026-11-07-restart/teardown.json) records empty Terraform state and 23 checks with zero remaining resources or errors. Bootstrap state, GitHub OIDC roles and budget alerts are retained. The cart fix passed local tests; deploy it and rerun the failed purchase journey before issuing the successful-release tag. The original five-day runtime and leave-running-for-review instructions are superseded. Workflow definitions are pushed and the previous deployed build passed all six CI jobs.
 
 The separate scan across 17 regions found no load balancers or nonterminated demo EC2 instances. Three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP remain outside the demo; storage and Elastic IP charges may continue. Redshift inventory was unavailable (`OptInRequired`), so this is not a claim that every account service was inspected.
 

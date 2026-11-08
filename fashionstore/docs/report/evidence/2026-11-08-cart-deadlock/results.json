@@ -1,0 +1,77 @@
+{
+  "date": "2026-11-08",
+  "retested_at": "2026-11-08T23:12:36+08:00",
+  "timezone": "Asia/Kuala_Lumpur",
+  "timestamp_source": "Latest Maven Surefire report modification time, consistent with the test log.",
+  "environment": {
+    "scope": "local API integration tests",
+    "database_image": "mysql:8.4",
+    "java_version": "21.0.13"
+  },
+  "problem": "Concurrent replacement of two different empty carts could deadlock during cart_items insertion and return HTTP 500.",
+  "change": {
+    "method": "CartRepository.replace",
+    "transaction_isolation": "READ_COMMITTED",
+    "reason": "Avoid range gap locks from empty-cart deletes blocking another shopper's insertion.",
+    "scope": "This cart replacement transaction only; no global isolation, checkout or UI change."
+  },
+  "baseline_regression_suite": {
+    "tests": 3,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 2,
+    "failed_test": "differentShoppersCanFillEmptyCartsConcurrently",
+    "expected_http_status": 200,
+    "actual_http_status": 500,
+    "database_error": "MySQLTransactionRollbackException: Deadlock found when trying to get lock"
+  },
+  "fixed_full_api_suite": {
+    "tests": 27,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 27
+  },
+  "fixed_cart_regression_suite": {
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 3,
+    "test_cases": [
+      {
+        "name": "differentShoppersCanFillEmptyCartsConcurrently",
+        "before": "failed",
+        "after": "passed"
+      },
+      {
+        "name": "failedReplacementPreservesThePreviousCart",
+        "before": "passed",
+        "after": "passed"
+      },
+      {
+        "name": "sameShopperReplacementsDoNotMixTheirItems",
+        "before": "passed",
+        "after": "passed"
+      }
+    ],
+    "coverage": [
+      "Force both different-shopper empty-cart deletes to finish before either insert; both requests return HTTP 200 with correct items.",
+      "An invalid second SKU rolls back the replacement and preserves the previous cart.",
+      "Concurrent replacements for the same shopper leave one complete submitted cart, without mixed items."
+    ]
+  },
+  "historical_live_failure": "../2026-11-07-restart/results.json",
+  "aws_status": "Demo remains torn down; post-fix AWS and live browser tests pending.",
+  "release": {
+    "requested_tag": "v0.1.0",
+    "status": "withheld",
+    "reason": "The fix passed local API tests; post-fix AWS and live purchase verification remain pending."
+  },
+  "limitations": [
+    "No AWS redeployment or post-fix live browser run was performed.",
+    "The November 7 live browser failure remains recorded as observed at that time.",
+    "The regression covers the reproduced empty-cart deadlock and transaction integrity; it does not prove every possible database contention pattern."
+  ]
+}

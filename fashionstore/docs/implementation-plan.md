@@ -4,11 +4,13 @@ Scope: the Part B implementation architecture only, in AWS `ap-southeast-1`, bui
 
 See the [current directory structure](../../FashionStore_Project_Directory_Structure.md) and [repository guide](repository-guide.md) for implemented paths and remaining gaps. Commands run from `fashionstore/` inside `sxtay1914/IS458`.
 
-## Build status (2026-11-07)
+## Build status (2026-11-08)
 
 The first AWS demo passed 31 live API tests and three live browser journeys; four optional API chaos/slow tests and one browser fault-injection journey were skipped. Local checks passed: 33 Terraform mock-provider test runs, 57 Lambda tests against MySQL 8.4, 24 API integration tests, 21 storefront tests, typecheck/build and four mocked browser journeys. The API Docker image was built for amd64 and deployed. Flyway V001–V003 migrated RDS with verified TLS, and reporting through Lambda/S3/Athena passed. Sanitized results and screenshots are in `docs/report/evidence/2026-11-06/`. CD, load drills and the full submission report remain outstanding.
 
-The restarted demo with the supplied UI and illustrations passed 31 live API tests, with four optional tests skipped. Its final browser run passed two journeys, failed one on a cart database deadlock and intentionally skipped one. All nine image URLs returned HTTP 200 and matched the source files; ten catalogue images loaded with no mobile horizontal overflow. The cart issue remains unfixed and the successful-release `v0.1.0` tag is withheld. See [restart evidence](report/evidence/2026-11-07-restart/results.json).
+The restarted demo with the supplied UI and illustrations passed 31 live API tests, with four optional tests skipped. Its final browser run passed two journeys, failed one on a cart database deadlock and intentionally skipped one. All nine image URLs returned HTTP 200 and matched the source files; ten catalogue images loaded with no mobile horizontal overflow. These historical results are preserved in [restart evidence](report/evidence/2026-11-07-restart/results.json).
+
+On 2026-11-08, the cart deadlock was reproduced locally against MySQL 8.4 and fixed by using `READ_COMMITTED` only for `CartRepository.replace`. The baseline regression suite had one failure and two passes; after the change, all 27 API tests passed, including concurrent empty-cart fills, rollback on an invalid item and complete same-shopper replacements. See [fix evidence](report/evidence/2026-11-08-cart-deadlock/results.json). Post-fix AWS/browser testing remains pending, so the successful-release `v0.1.0` tag is withheld.
 
 The demo was torn down after testing on 2026-11-07 and the website is removed. [Teardown verification](report/evidence/2026-11-07-restart/teardown.json) records empty Terraform state, confirmed twice, and 23 resource checks with zero remaining resources or errors. Staged Terraform applies removed 25, 38 and finally 78 resources; temporary operator credentials and leftover RDS logs were also removed. Bootstrap state, GitHub OIDC roles and the US$100 alert budget remain. Notifications are not a spending cap. The original five-day runtime and leave-running-for-review instructions are superseded.
 
