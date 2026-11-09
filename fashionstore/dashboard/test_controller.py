@@ -366,3 +366,26 @@ def test_load_requires_explicit_password_and_current_deployment_metadata(load_dr
 
     drill.refresh.assert_not_called()
     drill.launch.assert_not_called()
+
+
+@pytest.mark.parametrize("drill_name", ["Payment Outage", "Poison DLQ Redrive", "Flash Sale", "Pod Kill", "SQS Disconnect"])
+def test_clear_display_preserves_cloud_resources_and_other_history(drill_name, monkeypatch):
+    controller = Controller()
+    state = {
+        f"last_exec_{drill_name}": {"success": True, "logs": ["Previous run"]},
+        f"drill_reset_time_{drill_name}": 100,
+        "last_exec_other_drill": {"success": False},
+    }
+    monkeypatch.setattr(controller_module.time, "time", lambda: 200)
+    with patch("boto3.client") as aws_client, patch.object(
+        controller_module.subprocess, "run"
+    ) as run, patch.object(controller_module.subprocess, "Popen") as popen:
+        controller.reset_drill_state(drill_name, state)
+
+    assert state == {
+        f"drill_reset_time_{drill_name}": 200,
+        "last_exec_other_drill": {"success": False},
+    }
+    aws_client.assert_not_called()
+    run.assert_not_called()
+    popen.assert_not_called()

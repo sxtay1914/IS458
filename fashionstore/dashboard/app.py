@@ -509,11 +509,9 @@ with tab_chaos:
         if st.button("🔄 Update", key=f"btn_refresh_tel_{selected_drill_key}", use_container_width=True, help="Force refresh right now"):
             st.rerun()
     with t_col_reset:
-        if st.button("🧹 Reset Drill", key=f"btn_reset_drill_{selected_drill_key}", use_container_width=True, help="Clear logs, zero order counters, and restore clean AWS baseline state"):
-            st.session_state.pop(f"last_exec_{drill['title']}", None)
-            st.session_state[f"drill_reset_time_{drill['title']}"] = time.time()
-            res = controller.reset_drill_state(drill["title"])
-            st.toast(f"✨ {res['message']}", icon="🧹")
+        if st.button("🧹 Clear Display", key=f"btn_reset_drill_{selected_drill_key}", use_container_width=True, help="Clear saved output and restart the display baseline. AWS resources, queues and inventory are unchanged."):
+            controller.reset_drill_state(drill["title"], st.session_state)
+            st.toast("✨ Display history cleared and baseline restarted.", icon="🧹")
             time.sleep(0.5)
             st.rerun()
 

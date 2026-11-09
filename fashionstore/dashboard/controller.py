@@ -14,7 +14,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, MutableMapping, Optional
 
 # Root directories
 DASHBOARD_DIR = Path(__file__).resolve().parent
@@ -1002,70 +1002,10 @@ class TestController:
         except Exception as e:
             return {"available": False, "error": str(e)}
 
-    def reset_drill_state(self, drill_name: str) -> Dict[str, Any]:
-        """Reset AWS infrastructure state and flush queues/stock before a fresh demo run."""
-        tf_out = self.get_terraform_outputs()
-        res = {"success": True, "message": "Drill state reset successfully."}
-        try:
-            import boto3
-            if "Payment" in drill_name:
-                fn = tf_out.get("function_names", {}).get("payment-api", "fashionstore-demo-payment-api")
-                lam = boto3.client("lambda", region_name=self.region)
-                try:
-                    lam.delete_function_concurrency(FunctionName=fn)
-                except Exception:
-                    pass
-                sqs = boto3.client("sqs", region_name=self.region)
-                for q_key in ["checkout_queue_url", "checkout_dlq_url"]:
-                    q_url = tf_out.get(q_key)
-                    if q_url:
-                        try:
-                            sqs.purge_queue(QueueUrl=q_url)
-                        except Exception:
-                            pass
-                res["message"] = "Payment API restored to normal (operational) and queues flushed."
-
-            elif "DLQ" in drill_name or "Poison" in drill_name:
-                sqs = boto3.client("sqs", region_name=self.region)
-                for q_key in ["checkout_queue_url", "checkout_dlq_url"]:
-                    q_url = tf_out.get(q_key)
-                    if q_url:
-                        try:
-                            sqs.purge_queue(QueueUrl=q_url)
-                        except Exception:
-                            try:
-                                while True:
-                                    msgs = sqs.receive_message(QueueUrl=q_url, MaxNumberOfMessages=10, WaitTimeSeconds=0).get("Messages", [])
-                                    if not msgs:
-                                        break
-                                    for m in msgs:
-                                        sqs.delete_message(QueueUrl=q_url, ReceiptHandle=m["ReceiptHandle"])
-                            except Exception:
-                                pass
-                res["message"] = "Checkout queues and DLQ purged to 0."
-
-            elif "Flash" in drill_name:
-                try:
-                    k_env = os.environ.copy()
-                    if (APP_ROOT / ".kubeconfig").exists():
-                        k_env["KUBECONFIG"] = str(APP_ROOT / ".kubeconfig")
-                    subprocess.run(
-                        ["kubectl", "-n", "fashionstore", "delete", "job", "seed-demo", "--ignore-not-found"],
-                        capture_output=True, timeout=10, env=k_env,
-                    )
-                    subprocess.run(
-                        ["kubectl", "apply", "-f", str(APP_ROOT / "platform/kubernetes/jobs/seed-demo.yaml")],
-                        capture_output=True, timeout=10, env=k_env,
-                    )
-                except Exception:
-                    pass
-                res["message"] = "Flash sale stock reseeded (FLASH-001 reset to 50 items)."
-
-        except Exception as e:
-            res["success"] = False
-            res["message"] = f"Reset notice: {e}"
-
-        return res
+    def reset_drill_state(self, drill_name: str, display_state: MutableMapping[str, Any]) -> None:
+        """Clear this drill's displayed history and restart its telemetry baseline only."""
+        display_state.pop(f"last_exec_{drill_name}", None)
+        display_state[f"drill_reset_time_{drill_name}"] = time.time()
 
     def get_canary_weights(self) -> Dict[str, Any]:
         """Fetch current v1/v2 weights from the internal ALB listener rule."""
