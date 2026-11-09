@@ -1111,149 +1111,112 @@ class TestController:
     def run_payment_outage_drill(self, log_cb: Callable[[str], None]) -> bool:
         """Throttle payment-api Lambda to 0 concurrency, place order, restore and verify recovery."""
         tf_out = self.get_terraform_outputs()
-        fn_names = tf_out.get("function_names", {})
-        fn = fn_names.get("payment-api", "fashionstore-demo-payment-api")
+        fn = tf_out.get("function_names", {}).get("payment-api")
         base_url = tf_out.get("storefront_url", os.environ.get("FS_BASE_URL"))
+        user_a = os.environ.get("FS_USER_A_EMAIL")
+        pwd = os.environ.get("FS_TEST_PASSWORD")
 
-        if not base_url:
-            log_cb("❌ Error: Storefront URL is not available. Is the stack deployed?")
+        if not base_url or not fn:
+            log_cb("❌ Storefront URL and payment-api function must be available in Terraform outputs.")
+            return False
+        if not user_a or not pwd:
+            log_cb("❌ Set FS_USER_A_EMAIL and FS_TEST_PASSWORD for a dedicated test shopper before running this drill.")
             return False
 
         try:
             import boto3
             import requests
+            from botocore.exceptions import ClientError
+
+            log_cb("🔍 [Step 1/5] Checking test shopper, stock and cart before injecting a failure...")
+            token_script = APP_ROOT / "tests" / "e2e" / "tools" / "get-token.mjs"
+            try:
+                tok_res = subprocess.run(
+                    ["node", str(token_script), base_url, user_a, pwd],
+                    capture_output=True, text=True, timeout=90,
+                )
+            except subprocess.TimeoutExpired:
+                log_cb("❌ Test shopper sign-in timed out; payment settings were not changed.")
+                return False
+            if tok_res.returncode != 0:
+                raise RuntimeError("Test shopper sign-in failed; check the configured credentials.")
+            access_token = json.loads(tok_res.stdout).get("access_token")
+            if not access_token:
+                raise RuntimeError("Test shopper sign-in returned no access token.")
+            api_headers = {"Authorization": f"Bearer {access_token}"}
+            product = requests.get(f"{base_url}/api/products/BAG-001", timeout=15)
+            if product.status_code != 200 or product.json().get("stock", 0) < 1:
+                raise RuntimeError("BAG-001 must exist and be in stock before running this drill.")
+            cart = requests.put(
+                f"{base_url}/api/cart", json={"items": [{"sku": "BAG-001", "qty": 1}]},
+                headers=api_headers, timeout=15,
+            )
+            if cart.status_code != 200:
+                raise RuntimeError(f"Could not prepare the test cart: HTTP {cart.status_code}.")
 
             lam = boto3.client("lambda", region_name=self.region)
-            sqs = boto3.client("sqs", region_name=self.region)
-
-            log_cb("⚡ [Step 1/5] Checking current payment-api concurrency...")
-            prev_info = lam.get_function_concurrency(FunctionName=fn)
-            previous = prev_info.get("ReservedConcurrentExecutions")
-            log_cb(f"   Current concurrency: {previous if previous is not None else 'Unreserved'}")
-
-            log_cb("💥 [Step 2/5] Injecting Failure: Throttling payment-api Lambda concurrency to 0...")
-            lam.put_function_concurrency(FunctionName=fn, ReservedConcurrentExecutions=0)
-            log_cb("   ✅ payment-api is now throttled. Payments will fail and SQS will retry.")
-            # Allow AWS control plane to propagate the zero-concurrency rule
-            time.sleep(3)
-
-            # Direct verification of 429 throttle
-            try:
-                lam.invoke(
-                    FunctionName=fn,
-                    InvocationType="RequestResponse",
-                    Payload=json.dumps({"checkout_id": "probe-throttle", "amount_cents": 100, "email": "shopper@example.com"}).encode(),
-                )
-            except Exception as tex:
-                log_cb(f"   ⚡ Verified 429 Throttle: payment-api rejected probe with {tex.__class__.__name__} (Rate Exceeded)")
-
+            previous = lam.get_function_concurrency(FunctionName=fn).get("ReservedConcurrentExecutions")
+            if previous == 0:
+                raise RuntimeError("payment-api is already disabled; restore it before running this drill.")
             key = str(uuid.uuid4())
-            keys = [key, str(uuid.uuid4()), str(uuid.uuid4())]
-            log_cb(f"🛒 [Step 3/5] Placing checkouts (burst of {len(keys)} orders)...")
-
-            # Try placing via API if credentials exist, otherwise queue directly into SQS
-            user_a = os.environ.get("FS_USER_A_EMAIL", "kaijie090803@gmail.com")
-            pwd = os.environ.get("FS_TEST_PASSWORD", "Password123!")
-            placed_via_api = False
-            api_headers = {}
-
-            if user_a and pwd:
+            status_url = f"{base_url}/api/checkouts/{key}"
+            try:
+                log_cb("💥 [Step 2/5] Setting payment-api concurrency to 0...")
+                lam.put_function_concurrency(FunctionName=fn, ReservedConcurrentExecutions=0)
+                time.sleep(3)
                 try:
-                    token_script = APP_ROOT / "tests" / "e2e" / "tools" / "get-token.mjs"
-                    tok_res = subprocess.run(
-                        ["node", str(token_script), base_url, user_a, pwd],
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
+                    lam.invoke(
+                        FunctionName=fn, InvocationType="RequestResponse",
+                        Payload=json.dumps({"checkout_id": str(uuid.uuid4()), "amount_cents": 100, "email": user_a}).encode(),
                     )
-                    if tok_res.returncode == 0:
-                        tok_data = json.loads(tok_res.stdout)
-                        access_token = tok_data.get("access_token")
-                        if access_token:
-                            api_headers = {"Authorization": f"Bearer {access_token}"}
-                            requests.put(
-                                f"{base_url}/api/cart",
-                                json={"items": [{"sku": "TOP-001-S", "qty": 1}]},
-                                headers=api_headers,
-                                timeout=15,
-                            )
-                            c_res = requests.post(
-                                f"{base_url}/api/checkouts",
-                                headers={**api_headers, "Idempotency-Key": key},
-                                timeout=15,
-                            )
-                            if c_res.status_code == 202:
-                                log_cb("   ✅ Checkout accepted via API: HTTP 202 Accepted (queued in SQS)")
-                                placed_via_api = True
-                except Exception as ex:
-                    log_cb(f"   (API checkout note: {ex})")
+                except ClientError as exc:
+                    if exc.response.get("Error", {}).get("Code") != "TooManyRequestsException":
+                        raise
+                    log_cb("   ✅ Verified payment-api is throttled.")
+                else:
+                    raise RuntimeError("Payment was not throttled; the outage was not established.")
 
-            if not placed_via_api:
-                # Direct SQS Ingestion (Fail-safe for quick demo / missing Cognito env vars)
-                queue_url = tf_out.get("checkout_queue_url")
-                if not queue_url:
-                    log_cb("❌ Error: checkout_queue_url not found in terraform outputs.")
+                log_cb(f"🛒 [Step 3/5] Submitting checkout {key} through the API...")
+                accepted = requests.post(
+                    f"{base_url}/api/checkouts", headers={**api_headers, "Idempotency-Key": key}, timeout=15,
+                )
+                if accepted.status_code != 202:
+                    raise RuntimeError(f"Checkout was not accepted: HTTP {accepted.status_code}.")
+                log_cb("   ✅ API returned HTTP 202. Checking that checkout stays pending during the outage...")
+                time.sleep(45)
+                pending = requests.get(status_url, headers=api_headers, timeout=10)
+                if pending.status_code != 200 or pending.json().get("status") != "PENDING":
+                    raise RuntimeError("Checkout did not remain PENDING during the payment outage.")
+                log_cb("   ✅ Checkout remains PENDING while payment is disabled.")
+            finally:
+                # Restore even if the request fails or Streamlit interrupts the drill.
+                try:
                     if previous is None:
                         lam.delete_function_concurrency(FunctionName=fn)
                     else:
                         lam.put_function_concurrency(FunctionName=fn, ReservedConcurrentExecutions=previous)
-                    return False
+                except Exception:
+                    log_cb(f"❌ RESTORE FAILED: check payment-api concurrency for {fn} immediately.")
+                    raise
+                log_cb("🔧 [Step 4/5] Original payment-api concurrency restored.")
 
-                log_cb(f"   Buffering {len(keys)} orders into SQS checkout queue (HTTP 202 equivalent)...")
-                for k in keys:
-                    msg_body = {
-                        "schema_version": 1,
-                        "checkout_id": k,
-                        "user_sub": f"demo-shopper-{k[:6]}",
-                        "email": user_a or f"shopper-{k[:6]}@example.com",
-                        "items": [{"sku": "TOP-001-S", "qty": 1}],
-                        "requested_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                        "correlation_id": f"drill-{k[:8]}",
-                    }
-                    sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps(msg_body))
-                log_cb("   ✅ Orders buffered in SQS. Worker will attempt charge and payment-api will throttle (429).")
-
-            log_cb("⏳ Waiting 15s... Observing checkout state (payment-api throwing 429 throttles)...")
-            time.sleep(15)
-
-            log_cb("🔧 [Step 4/5] Self-Healing: Restoring payment-api Lambda concurrency...")
-            if previous is None:
-                lam.delete_function_concurrency(FunctionName=fn)
-            else:
-                lam.put_function_concurrency(FunctionName=fn, ReservedConcurrentExecutions=previous)
-            log_cb("   ✅ Concurrency restored! SQS message retry will now succeed.")
-
-            log_cb("🔄 [Step 5/5] Monitoring recovery and order processing...")
-            if placed_via_api:
-                recovered = False
-                for _ in range(12):  # poll up to ~60s
-                    time.sleep(5)
-                    try:
-                        st_res = requests.get(f"{base_url}/api/checkouts/{key}", headers=api_headers, timeout=10)
-                        if st_res.status_code == 200:
-                            b = st_res.json()
-                            if b.get("status") == "CONFIRMED":
-                                log_cb(f"   ✅ Order CONFIRMED! Order ID: {b.get('order_id')}")
-                                recovered = True
-                                break
-                            else:
-                                log_cb(f"   Status: {b.get('status')} (waiting for visibility retry...)")
-                    except Exception:
-                        pass
-                if recovered:
-                    log_cb("🎉 SUCCESS: Checkout survived payment outage via SQS retry and confirmed!")
+            log_cb("🔄 [Step 5/5] Waiting up to 420s for CONFIRMED (SQS visibility timeout is 180s)...")
+            deadline = time.monotonic() + 420
+            while time.monotonic() < deadline:
+                outcome = requests.get(status_url, headers=api_headers, timeout=10)
+                if outcome.status_code != 200:
+                    raise RuntimeError(f"Could not read checkout status: HTTP {outcome.status_code}.")
+                body = outcome.json()
+                if body.get("status") == "CONFIRMED":
+                    log_cb(f"   ✅ Order CONFIRMED! Order ID: {body.get('order_id')}")
+                    log_cb("🎉 SUCCESS: Checkout was accepted during the outage and confirmed after payment was restored.")
                     return True
-
-            # Direct SQS verification: verify DLQ depth is 0 and SQS is draining
-            time.sleep(5)
-            dlq_url = tf_out.get("checkout_dlq_url")
-            if dlq_url:
-                dlq_attrs = sqs.get_queue_attributes(QueueUrl=dlq_url, AttributeNames=["ApproximateNumberOfMessages"])
-                dlq_count = int(dlq_attrs.get("Attributes", {}).get("ApproximateNumberOfMessages", 0))
-                log_cb(f"   Current DLQ depth: {dlq_count} (zero lost customer orders)")
-            log_cb("   📊 CloudWatch Metric Tip: Check widget 'Payment API Failures & Worker Retries' (Throttles spike).")
-            log_cb("🎉 SUCCESS: payment-api recovered! SQS retry processed without data loss.")
-            return True
+                if body.get("status") != "PENDING":
+                    raise RuntimeError(f"Checkout ended with {body.get('status')}: {body.get('reason')}.")
+                log_cb("   Checkout is still PENDING; waiting for processing after payment was restored...")
+                time.sleep(5)
+            log_cb(f"❌ Checkout {key} did not confirm within 420s; recovery is unverified. Payment concurrency is restored.")
+            return False
 
         except Exception as e:
             log_cb(f"❌ Exception during drill: {e}")

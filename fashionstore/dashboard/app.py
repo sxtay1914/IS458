@@ -363,16 +363,16 @@ with tab_chaos:
             "title": "💥 Payment Outage & SQS Retry Drill",
             "desc": "Simulates a downstream banking gateway outage by throttling payment worker concurrency to zero.",
             "anim_fn": render_payment_outage_animation,
-            "does": "Throttles <code>payment-api</code> Lambda reserved concurrency to 0. A shopper places a checkout request during the outage.",
-            "safety": "<b>Asynchronous Decoupling & Visibility Retries</b>: The shopper receives <code>202 Accepted</code> immediately. When payment fails, SQS hides the message for 180s (visibility timeout) and retries automatically without dropping orders.",
+            "does": "Validates the test shopper and cart, then throttles <code>payment-api</code> Lambda concurrency to 0 and submits a real checkout. Restores the original concurrency after the outage.",
+            "safety": "<b>Asynchronous Checkout Recovery</b>: Verifies <code>202 Accepted</code> and <code>PENDING</code> during the outage, then polls for up to 420s after payment is restored. The wait allows for SQS's 180s visibility timeout. Success means this checkout was accepted during the outage and subsequently <code>CONFIRMED</code>; it does not establish whether a worker attempted payment during the outage.",
             "cw_proof": [
                 "<i>Payment API Failures</i>: <code>payment-api Throttles</code> rises above 0.",
-                "<i>process-checkout</i>: <code>Errors</code> increments during the outage.",
-                "<i>Checkout queue</i>: <code>Oldest Age (s)</code> climbs while buffered; drops to 0 when restored.",
-                "<i>DLQ depth</i>: Stays strictly at 0 (zero lost customer orders).",
+                "<i>process-checkout</i>: Inspect worker logs for retry failures and the eventual checkout outcome.",
+                "<i>Checkout queue</i>: Observe message age while pending and queue drainage after recovery.",
+                "<i>DLQ depth</i>: Check for quarantined messages; an empty DLQ alone does not prove checkout recovery.",
             ],
             "target": "Lambda: payment-api (concurrency: 0)",
-            "duration": "~35 seconds",
+            "duration": "Up to ~8 minutes for outage/recovery, plus sign-in (180s SQS retry wait)",
             "btn_label": "Run Payment Outage Drill",
             "btn_key": "btn_run_payment",
             "action": lambda cb: controller.run_payment_outage_drill(cb),
@@ -530,9 +530,9 @@ with tab_chaos:
                 m1.metric(
                     "Payment Gateway",
                     s["concurrency"],
-                    delta="Outage Injected" if "Throttled" in s["concurrency"] else "Operational",
+                    delta="Outage Injected" if "Throttled" in s["concurrency"] else "Enabled",
                     delta_color="inverse" if "Throttled" in s["concurrency"] else "normal",
-                    help="Status of payment-api. During Drill 1, concurrency drops to 0 to simulate downstream banking downtime.",
+                    help="Configured payment-api concurrency, not a health check. During Drill 1 it drops to 0.",
                 )
                 m2.metric(
                     "Payment Throttles (429)",
@@ -544,21 +544,21 @@ with tab_chaos:
                 m3.metric(
                     "Confirmed Orders",
                     f"{s['confirmed_checkouts']}",
-                    delta="100% Processed" if s["confirmed_checkouts"] > 0 else None,
+                    delta="Recorded confirmations" if s["confirmed_checkouts"] > 0 else None,
                     delta_color="normal",
                     help="Orders confirmed since baseline.",
                 )
                 m4.metric(
                     "DLQ Depth",
                     f"{s['dlq_depth']}",
-                    delta="0 Lost" if s["dlq_depth"] == 0 else f"{s['dlq_depth']} Quarantined",
+                    delta="Empty" if s["dlq_depth"] == 0 else f"{s['dlq_depth']} Quarantined",
                     delta_color="normal" if s["dlq_depth"] == 0 else "inverse",
-                    help="Quarantined messages in DLQ (zero data loss).",
+                    help="Quarantined messages in DLQ. An empty queue does not prove every checkout succeeded.",
                 )
 
-                # Live Audit Proof Cards from CloudWatch Logs (<300ms)
+                # Recent confirmation records from CloudWatch Logs.
                 if s.get("confirmed_records"):
-                    st.markdown("##### ⚡ Instant Audit Evidence (<300ms from CloudWatch Logs)")
+                    st.markdown("##### ⚡ Recent Confirmation Evidence from CloudWatch Logs")
                     records = s["confirmed_records"][-3:]
                     rec_cols = st.columns(len(records))
                     for idx, rec in enumerate(records):
@@ -568,7 +568,7 @@ with tab_chaos:
                 if tel.get("df") is not None and hasattr(tel["df"], "empty") and not tel["df"].empty:
                     st.caption("📈 **CloudWatch Metric History (Past 15 Minutes — 1-Min Interval, SGT):**")
                     st.line_chart(tel["df"], height=230)
-                    st.caption("ℹ️ *Note: CloudWatch time-series metrics aggregate every 60s (points settle within 1–2 mins), while audit log events above reflect instantly.*")
+                    st.caption("ℹ️ *CloudWatch metrics use 60-second periods. Both metrics and log events can arrive after a delay; the drill checks its checkout outcome through the API.*")
 
                 if tel.get("recent_logs"):
                     with st.expander("📜 Full Lambda Worker Audit Log Stream (process-checkout)", expanded=False):
