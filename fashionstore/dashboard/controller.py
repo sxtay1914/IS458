@@ -172,64 +172,94 @@ class TestController:
         except Exception as e:
             return {"available": False, "error": str(e)}
 
-    def ensure_valid_tokens(self) -> None:
-        """Ensure load test tokens exist and are not expired (>2 minutes remaining)."""
+    def ensure_valid_tokens(self, required_users: int) -> None:
+        """Prepare distinct access tokens for this deployment, or fail before starting load."""
+        import base64
+        import concurrent.futures
+
+        tf_out = self.get_terraform_outputs()
+        base_url = tf_out.get("storefront_url")
+        app_config = tf_out.get("app_config", {})
+        issuer = app_config.get("COGNITO_ISSUER_URL")
+        client_id = app_config.get("COGNITO_CLIENT_ID")
+        user_pwd = os.environ.get("FS_TEST_PASSWORD")
+        if not base_url or not issuer or not client_id:
+            raise ValueError("Load tests need the deployed storefront URL and Cognito issuer/client in Terraform outputs.")
+        if not user_pwd:
+            raise ValueError("Set FS_TEST_PASSWORD for the loadtest+N@example.com shoppers before running load tests.")
+        if type(required_users) is not int or required_users < 1:
+            raise ValueError("The selected load profile must require at least one shopper.")
+
+        def valid(tokens):
+            if not isinstance(tokens, list) or len(tokens) < required_users:
+                return False
+            subjects = set()
+            # Current scripts run up to five minutes; allow time for outcome polling too.
+            expires_after = time.time() + 600
+            try:
+                for token in tokens:
+                    parts = token.split(".")
+                    if len(parts) != 3 or not all(parts):
+                        return False
+                    payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+                    sub = payload.get("sub")
+                    exp = payload.get("exp")
+                    if (not isinstance(sub, str) or not sub or sub in subjects
+                            or type(exp) is not int or exp <= expires_after
+                            or payload.get("token_use") != "access"
+                            or payload.get("iss") != issuer
+                            or payload.get("client_id") != client_id
+                            or "fashionstore-api/checkout.write" not in payload.get("scope", "").split()):
+                        return False
+                    subjects.add(sub)
+                # These checks select cached tokens; the API still verifies JWT signatures.
+                return True
+            except (AttributeError, TypeError, ValueError):
+                return False
+
         tokens_file = TESTS_DIR / "load" / "tokens.json"
-        needs_refresh = True
-        if tokens_file.exists():
-            try:
-                import base64
-                with open(tokens_file) as f:
-                    toks = json.load(f)
-                if toks and isinstance(toks, list) and len(toks) > 0:
-                    parts = toks[0].split(".")
-                    if len(parts) >= 2:
-                        pad = "=" * (4 - len(parts[1]) % 4)
-                        payload = json.loads(base64.urlsafe_b64decode(parts[1] + pad))
-                        exp = payload.get("exp", 0)
-                        if time.time() < exp - 120:
-                            needs_refresh = False
-            except Exception:
-                needs_refresh = True
+        try:
+            if valid(json.loads(tokens_file.read_text())):
+                return
+        except (OSError, ValueError):
+            pass
 
-        if needs_refresh:
-            tf_out = self.get_terraform_outputs()
-            base_url = tf_out.get("storefront_url", os.environ.get("FS_BASE_URL", "https://dr1ozddnbk8sa.cloudfront.net"))
-            user_pwd = os.environ.get("FS_TEST_PASSWORD", "Password123!")
-            token_script = APP_ROOT / "tests" / "e2e" / "tools" / "get-token.mjs"
-            try:
-                import concurrent.futures
-                def _fetch(i):
-                    email = f"loadtest+{i}@example.com"
-                    r = subprocess.run(["node", str(token_script), base_url, email, user_pwd], capture_output=True, text=True, timeout=25)
-                    if r.returncode == 0:
-                        return json.loads(r.stdout).get("access_token")
-                    return None
+        token_script = APP_ROOT / "tests" / "e2e" / "tools" / "get-token.mjs"
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
-                    tokens = list(ex.map(_fetch, range(1, 61)))
-                tokens = [t for t in tokens if t]
-                if len(tokens) >= 60:
-                    with open(tokens_file, "w") as f:
-                        json.dump(tokens, f)
-                else:
-                    # Fallback to user A if loadtest users unavailable
-                    user_email = os.environ.get("FS_USER_A_EMAIL", "kaijie090803@gmail.com")
-                    res = subprocess.run(
-                        ["node", str(token_script), base_url, user_email, user_pwd],
-                        capture_output=True,
-                        text=True,
-                        timeout=25,
-                    )
-                    if res.returncode == 0:
-                        tok_data = json.loads(res.stdout)
-                        tok = tok_data.get("access_token")
-                        if tok:
-                            expanded = [tok for _ in range(60)]
-                            with open(tokens_file, "w") as f:
-                                json.dump(expanded, f)
+        def fetch_token(i):
+            try:
+                result = subprocess.run(
+                    ["node", str(token_script), base_url, f"loadtest+{i}@example.com", user_pwd],
+                    capture_output=True, text=True, timeout=90,
+                )
+                if result.returncode == 0:
+                    return json.loads(result.stdout).get("access_token")
             except Exception:
-                pass
+                # Subprocess exceptions can contain the password-bearing command.
+                return None
+            return None
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, required_users)) as pool:
+            tokens = list(pool.map(fetch_token, range(1, required_users + 1)))
+        if not valid(tokens):
+            raise ValueError(
+                f"Could not obtain {required_users} distinct, current-deployment access tokens with at least 10 minutes remaining. "
+                "Check the loadtest+N@example.com users and FS_TEST_PASSWORD; no authenticated load was started."
+            )
+        tokens_file.touch(mode=0o600, exist_ok=True)
+        tokens_file.chmod(0o600)
+        tokens_file.write_text(json.dumps(tokens))
+
+    def _load_users_required(self, profile: str, script_name: str | None = None) -> int:
+        settings = json.loads((TESTS_DIR / "load" / "profiles" / f"{profile}.json").read_text())
+        checkout = settings["checkout"]
+        checkout_users = max(stage["target"] for stage in checkout["stages"]) if checkout.get("stages") else checkout["vus"]
+        flash_users = settings["flash_sale"]["buyers"]
+        if script_name == "checkout.js":
+            return checkout_users
+        if script_name == "flash-sale.js":
+            return flash_users
+        return max(checkout_users, flash_users)
 
     def get_alb_arn_suffix(self) -> Optional[str]:
         """Fetch or deduce the ALB ARN suffix (e.g. app/fashionstore-demo-api/0adf...)."""
@@ -1390,15 +1420,25 @@ class TestController:
     def run_k6_test(self, script_name: str, profile: str, log_cb: Callable[[str], None]) -> bool:
         """Run a k6 load test script with streaming output."""
         tf_out = self.get_terraform_outputs()
-        site = tf_out.get("storefront_url", os.environ.get("FS_BASE_URL", "https://localhost:8080"))
+        site = tf_out.get("storefront_url")
         script_path = TESTS_DIR / "load" / script_name
 
+        if not site:
+            log_cb("❌ Load tests need the deployed storefront URL in Terraform outputs.")
+            return False
         if not script_path.exists():
             log_cb(f"❌ Script not found: {script_path}")
             return False
 
         if script_name in ("checkout.js", "flash-sale.js"):
-            self.ensure_valid_tokens()
+            try:
+                self.ensure_valid_tokens(self._load_users_required(profile, script_name))
+            except ValueError as exc:
+                log_cb(f"❌ Load preflight failed: {exc}")
+                return False
+            except Exception:
+                log_cb("❌ Could not prepare load tokens; check the profile, token helper and local file permissions.")
+                return False
 
         k6_bin = shutil.which("k6") or str(Path.home() / ".local" / "bin" / "k6") or "k6"
         log_cb(f"🚀 Launching k6 ({script_name}) | Profile: {profile} | Target: {site}")
@@ -1406,6 +1446,7 @@ class TestController:
             k6_bin, "run",
             "-e", f"BASE_URL={site}",
             "-e", f"PROFILE={profile}",
+            "-e", f"TOKENS_FILE={TESTS_DIR / 'load' / 'tokens.json'}",
             str(script_path),
         ]
 
@@ -1431,6 +1472,14 @@ class TestController:
 
     def run_full_load_suite(self, profile: str, log_cb: Callable[[str], None]) -> bool:
         """Run all 3 k6 load tests sequentially (browse, checkout, flash-sale) with live streaming logs."""
+        try:
+            self.ensure_valid_tokens(self._load_users_required(profile))
+        except ValueError as exc:
+            log_cb(f"❌ Benchmark preflight failed: {exc}")
+            return False
+        except Exception:
+            log_cb("❌ Could not prepare load tokens; check the profile, token helper and local file permissions.")
+            return False
         tests = [
             ("browse.js", "Stage 1/3: 🌐 Catalog Browsing Ramp (CloudFront CDN Edge & ALB Latency)"),
             ("checkout.js", "Stage 2/3: 🛒 Asynchronous Checkout Surge (SQS Shock Absorber & Autoscaling)"),

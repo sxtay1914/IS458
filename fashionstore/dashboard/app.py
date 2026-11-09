@@ -703,6 +703,7 @@ with tab_chaos:
 with tab_load:
     st.markdown("### 🚀 Full System Load & Concurrency Benchmark")
     st.caption("Benchmark full system scalability, CloudFront CDN edge caching, SQS queue buffering, and database concurrency guarantees under synthetic load.")
+    st.caption("Preflight requires distinct loadtest+N@example.com shoppers in this deployment and FS_TEST_PASSWORD. The selected profile determines the number of shoppers; missing or invalid tokens stop the run.")
     st.write("")
 
     l_col1, l_col2 = st.columns([1.65, 1.35])

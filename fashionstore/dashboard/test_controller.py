@@ -1,3 +1,6 @@
+import base64
+import io
+import json
 from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
@@ -188,3 +191,178 @@ def test_payment_drill_restores_before_logging_after_ui_interruption(payment_dri
         drill.controller.run_payment_outage_drill(interrupted_log)
 
     drill.lam.delete_function_concurrency.assert_called_once_with(FunctionName="test-payment")
+
+
+def load_token(sub, **overrides):
+    claims = {
+        "sub": sub, "exp": 5000, "token_use": "access",
+        "iss": "https://cognito-idp.ap-southeast-1.amazonaws.com/test-pool",
+        "client_id": "test-client", "scope": "fashionstore-api/checkout.write",
+        **overrides,
+    }
+    payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+    return f"header.{payload}.signature"
+
+
+@pytest.fixture
+def load_drill(monkeypatch, tmp_path):
+    source = controller_module.TESTS_DIR / "load"
+    load_dir = tmp_path / "load"
+    (load_dir / "profiles").mkdir(parents=True)
+    for profile in ("smoke", "fast-demo", "demo"):
+        (load_dir / "profiles" / f"{profile}.json").write_text((source / "profiles" / f"{profile}.json").read_text())
+    for script in ("browse.js", "checkout.js", "flash-sale.js"):
+        (load_dir / script).touch()
+    monkeypatch.setattr(controller_module, "TESTS_DIR", tmp_path)
+    monkeypatch.setattr(controller_module.time, "time", lambda: 1000)
+    monkeypatch.setenv("FS_TEST_PASSWORD", "secret-test-password")
+    controller = Controller()
+    controller._tf_outputs = {
+        "storefront_url": "https://current-store.example",
+        "app_config": {
+            "COGNITO_ISSUER_URL": "https://cognito-idp.ap-southeast-1.amazonaws.com/test-pool",
+            "COGNITO_CLIENT_ID": "test-client",
+        },
+    }
+    refresh = Mock(side_effect=lambda args, **kwargs: SimpleNamespace(
+        returncode=0, stdout=json.dumps({"access_token": load_token(args[3])}),
+    ))
+    monkeypatch.setattr(controller_module.subprocess, "run", refresh)
+    process = SimpleNamespace(stdout=io.StringIO(""), returncode=0, wait=Mock())
+    launch = Mock(return_value=process)
+    monkeypatch.setattr(controller_module.subprocess, "Popen", launch)
+    monkeypatch.setattr(controller_module.shutil, "which", lambda name: "/test/bin/k6")
+    return SimpleNamespace(
+        controller=controller, tokens_file=load_dir / "tokens.json",
+        refresh=refresh, launch=launch, logs=[],
+    )
+
+
+def test_valid_load_token_cache_is_reused(load_drill):
+    drill = load_drill
+    tokens = [load_token("shopper-a"), load_token("shopper-b")]
+    drill.tokens_file.write_text(json.dumps(tokens))
+
+    drill.controller.ensure_valid_tokens(2)
+
+    drill.refresh.assert_not_called()
+    assert json.loads(drill.tokens_file.read_text()) == tokens
+
+
+@pytest.mark.parametrize("invalid_second", [
+    load_token("shopper-b", exp=999),
+    load_token("shopper-b", exp=1500),
+    load_token("shopper-b", iss="another-pool"),
+    load_token("shopper-b", client_id="another-client"),
+    load_token("shopper-a"),
+    load_token("shopper-b", token_use="id"),
+    load_token("shopper-b", scope="openid"),
+    "malformed-token",
+])
+def test_every_cached_token_is_validated_even_when_fewer_users_are_needed(load_drill, invalid_second):
+    drill = load_drill
+    drill.tokens_file.write_text(json.dumps([load_token("shopper-a"), invalid_second]))
+
+    drill.controller.ensure_valid_tokens(1)
+
+    drill.refresh.assert_called_once()
+    assert json.loads(drill.tokens_file.read_text()) == [load_token("loadtest+1@example.com")]
+
+
+def test_insufficient_load_tokens_refresh_distinct_users(load_drill):
+    drill = load_drill
+    drill.tokens_file.write_text(json.dumps([load_token("shopper-a")]))
+
+    drill.controller.ensure_valid_tokens(2)
+
+    assert json.loads(drill.tokens_file.read_text()) == [
+        load_token("loadtest+1@example.com"), load_token("loadtest+2@example.com"),
+    ]
+    assert drill.tokens_file.stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize("bad_token", [
+    load_token("same-shopper"),
+    load_token("wrong-pool", iss="another-pool"),
+    load_token("expired", exp=999),
+    None,
+])
+def test_invalid_refreshed_tokens_never_replace_cache(load_drill, bad_token):
+    drill = load_drill
+    original = json.dumps([load_token("old-shopper", exp=999)])
+    drill.tokens_file.write_text(original)
+    drill.refresh.side_effect = None
+    drill.refresh.return_value = SimpleNamespace(returncode=0, stdout=json.dumps({"access_token": bad_token}))
+
+    with pytest.raises(ValueError, match="distinct"):
+        drill.controller.ensure_valid_tokens(2)
+
+    assert drill.tokens_file.read_text() == original
+
+
+@pytest.mark.parametrize(("profile", "script", "users"), [
+    ("smoke", "checkout.js", 1), ("smoke", "flash-sale.js", 5),
+    ("fast-demo", "checkout.js", 5), ("fast-demo", "flash-sale.js", 5),
+    ("demo", "checkout.js", 15), ("demo", "flash-sale.js", 60),
+])
+def test_k6_prepares_enough_distinct_shoppers_for_actual_profile(load_drill, profile, script, users, monkeypatch):
+    drill = load_drill
+    monkeypatch.setenv("TOKENS_FILE", "/unvalidated/old-tokens.json")
+
+    assert drill.controller.run_k6_test(script, profile, drill.logs.append)
+
+    assert drill.refresh.call_count == users
+    assert {entry.args[0][3] for entry in drill.refresh.call_args_list} == {
+        f"loadtest+{i}@example.com" for i in range(1, users + 1)
+    }
+    assert f"TOKENS_FILE={drill.tokens_file}" in drill.launch.call_args.args[0]
+
+
+@pytest.mark.parametrize("failure", ["partial", "timeout"])
+def test_load_refresh_failure_stops_k6_without_exposing_credentials(load_drill, failure):
+    drill = load_drill
+    if failure == "timeout":
+        drill.refresh.side_effect = controller_module.subprocess.TimeoutExpired(
+            ["node", "get-token.mjs", "secret-test-password"], timeout=90,
+        )
+    else:
+        def partial(args, **kwargs):
+            if args[3] == "loadtest+2@example.com":
+                return SimpleNamespace(returncode=1, stdout="", stderr="secret-test-password")
+            return SimpleNamespace(returncode=0, stdout=json.dumps({"access_token": load_token(args[3])}))
+        drill.refresh.side_effect = partial
+
+    assert not drill.controller.run_k6_test("flash-sale.js", "smoke", drill.logs.append)
+
+    drill.launch.assert_not_called()
+    assert not drill.tokens_file.exists()
+    assert "secret-test-password" not in "\n".join(drill.logs)
+
+
+def test_full_benchmark_preflights_all_identities_before_starting_browse(load_drill):
+    drill = load_drill
+    drill.refresh.side_effect = None
+    drill.refresh.return_value = SimpleNamespace(returncode=1, stdout="")
+
+    assert not drill.controller.run_full_load_suite("demo", drill.logs.append)
+
+    assert drill.refresh.call_count == 60
+    drill.launch.assert_not_called()
+
+
+@pytest.mark.parametrize("missing", ["password", "storefront_url", "COGNITO_ISSUER_URL", "COGNITO_CLIENT_ID"])
+def test_load_requires_explicit_password_and_current_deployment_metadata(load_drill, missing, monkeypatch):
+    drill = load_drill
+    drill.tokens_file.write_text(json.dumps([load_token("shopper-a")]))
+    if missing == "password":
+        monkeypatch.delenv("FS_TEST_PASSWORD")
+    elif missing == "storefront_url":
+        drill.controller._tf_outputs.pop(missing)
+        monkeypatch.setenv("FS_BASE_URL", "https://previous-deployment.example")
+    else:
+        drill.controller._tf_outputs["app_config"].pop(missing)
+
+    assert not drill.controller.run_k6_test("checkout.js", "smoke", drill.logs.append)
+
+    drill.refresh.assert_not_called()
+    drill.launch.assert_not_called()
