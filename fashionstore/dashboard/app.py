@@ -32,7 +32,6 @@ from controller import TestController
 from animations import (
     render_payment_outage_animation,
     render_dlq_redrive_animation,
-    render_pod_kill_animation,
     render_reconciler_animation,
     render_flash_sale_animation,
 )
@@ -346,7 +345,7 @@ with tab_chaos:
     drill_options = [
         "💥 Drill 1: Payment Outage & SQS Retry (Transient Banking Downtime)",
         "♻️ Drill 2: Synthetic DLQ Redrive (Worker Processing)",
-        "💀 Drill 3: Abrupt Pod Kill & Zero-Downtime HA (Compute Failover)",
+        "💀 Drill 3: v1 Pod Replacement & API Sampling",
         "🔌 Drill 4: SQS Disconnect & Outbox Reconciler (Network Partition Recovery)",
         "⚡ Drill 5: Flash Sale Atomic Inventory Lock (Zero Oversell Concurrency)",
     ]
@@ -394,19 +393,18 @@ with tab_chaos:
             "btn_key": "btn_run_dlq",
             "action": lambda cb: controller.run_poison_dlq_drill(cb),
         },
-        "💀 Drill 3: Abrupt Pod Kill & Zero-Downtime HA (Compute Failover)": {
-            "title": "💀 Abrupt Pod Kill & Zero-Downtime HA Drill",
-            "desc": "Instantly kills an active Kubernetes container pod during live shopper browsing to verify failover.",
-            "anim_fn": render_pod_kill_animation,
-            "does": "Executes an ungraceful termination (<code>kubectl delete pod --now</code>) on a live backend pod while continuous HTTP requests hit the API.",
-            "safety": "<b>PodDisruptionBudget (PDB) & ALB TargetGroupBinding</b>: Multi-replica deployment and PDB (<code>minAvailable: 1</code>) ensure surviving pods handle traffic. The ALB stops routing to the dead IP, while Kubernetes ReplicaSet schedules a replacement pod.",
+        "💀 Drill 3: v1 Pod Replacement & API Sampling": {
+            "title": "💀 v1 Pod Replacement & API Sampling Drill",
+            "desc": "Deletes one Ready v1 pod, samples the deployed API and waits for replacement readiness.",
+            "does": "Checks the deployed HTTPS API and at least two Ready v1 pods, then deletes one v1 pod with <code>kubectl delete pod --now --wait=false</code>. Samples <code>/api/products</code> during recovery; the single v2 canary is excluded.",
+            "safety": "<b>Readiness Gate</b>: Requires at least two Ready, non-terminating v1 pods before deletion. Success requires the deleted UID to disappear, a new name and UID to become Ready, the current desired replica count to be Ready, and at least five successful API samples. Direct pod deletion bypasses the PDB; sampled success does not prove uninterrupted availability.",
             "cw_proof": [
-                "<i>Target 5XX Errors</i>: Stays strictly at <b>0</b> (proves zero 502/504 errors leaked to shoppers during pod kill).",
-                "<i>Kubernetes ReplicaSet</i>: Automatically provisions a replacement container in <2 seconds.",
-                "<i>ALB Zero-Downtime Routing</i>: Surviving replica absorbs all traffic without dropping connections.",
+                "<i>Drill Output</i>: Shows each successful API sample and the observed Ready replacement.",
+                "<i>Kubernetes</i>: Verifies a new v1 pod identity and the current desired Ready replica count.",
+                "<i>ALB Metrics</i>: Inspect target health and target 5XX errors as supporting observations; aggregate metrics alone do not prove zero downtime.",
             ],
             "target": "EKS: pod/store-api-v1-*",
-            "duration": "~25 seconds",
+            "duration": "Up to ~5 minutes for replacement readiness, plus preflight",
             "btn_label": "Run Pod Kill Drill",
             "btn_key": "btn_run_podkill",
             "action": lambda cb: controller.run_pod_kill_drill(cb),
@@ -651,14 +649,14 @@ with tab_chaos:
                 s = tel["summary"]
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric("v1 Healthy Targets", f"{s['v1_healthy']} / {s['v1_total']}", help="Active healthy pods registered in ALB v1 target group")
-                m2.metric("Target 5XX Errors", f"{s['target_5xx_15m']}", help="HTTP 502/504 errors on ALB (proves zero customer downtime)")
+                m2.metric("Target 5XX Errors", f"{s['target_5xx_15m']}", help="Target 5XX responses observed by ALB during the telemetry window; this is not a complete availability measurement")
                 m3.metric("v2 Canary Targets", f"{s['v2_healthy']} / {s['v2_total']}", help="Canary v2 pods registered in ALB")
                 m4.metric("K8s Running Pods", f"{s['running_pods']}", help="Total store-api pods in fashionstore namespace")
 
                 if tel.get("df") is not None and hasattr(tel["df"], "empty") and not tel["df"].empty:
                     st.caption("📈 **ALB Target Group Health & 5XX Errors (Past 15 Minutes — 1-Min Interval, SGT):**")
                     st.line_chart(tel["df"], height=230)
-                    st.caption("ℹ️ *Why the healthy host line stays flat: Kubernetes ReplicaSet auto-heals and launches a replacement pod in ~1–2 seconds, which is faster than AWS CloudWatch's 60-second metric aggregation window. The core resilience proof is **Target 5XX Errors remaining strictly at 0**, verifying zero dropped requests during pod failure.*")
+                    st.caption("ℹ️ CloudWatch aggregates these metrics over 60 seconds and may miss short health changes. Use the drill output for the observed API samples and Ready replacement; neither sampled requests nor aggregate metrics establish uninterrupted availability.")
 
                 if tel.get("pods"):
                     with st.expander("📦 Active Kubernetes Pod Inventory (`kubectl get pods`)", expanded=False):

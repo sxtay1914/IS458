@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import subprocess
 from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
@@ -607,3 +608,180 @@ def test_dlq_checks_all_log_pages_for_its_confirmation(dlq_drill):
     ]
 
     assert drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+
+def pod(name, uid, *, version="v1", ready=True, terminating=False):
+    return {
+        "metadata": {
+            "name": name, "uid": uid, "labels": {"app": "store-api", "version": version},
+            **({"deletionTimestamp": "2026-11-10T00:00:00Z"} if terminating else {}),
+        },
+        "status": {"phase": "Running", "conditions": [{"type": "Ready", "status": "True" if ready else "False"}]},
+    }
+
+
+@pytest.fixture
+def pod_drill(monkeypatch):
+    controller = Controller()
+    controller._tf_outputs = {"storefront_url": "https://store.example"}
+    drill = SimpleNamespace(
+        controller=controller, clock=0, deleted=False, logs=[], api_samples=[],
+        initial=[pod("v2-canary", "canary", version="v2"), pod("v1-a", "a"), pod("v1-b", "b")],
+        after=[pod("v1-b", "b"), pod("v1-c", "c")],
+        desired=2, recovered_desired=2, ready_after=15, fail_command=None,
+    )
+    monkeypatch.setattr(controller_module.time, "monotonic", lambda: drill.clock)
+    monkeypatch.setattr(controller_module.time, "sleep", lambda seconds: setattr(drill, "clock", drill.clock + seconds))
+
+    def run(cmd, **kwargs):
+        args = cmd[3:]
+        assert cmd[:3] == ["kubectl", "-n", "fashionstore"]
+        if drill.fail_command and args[:2] == drill.fail_command:
+            raise subprocess.CalledProcessError(1, cmd, stderr="kubectl failed")
+        if args == ["get", "deployment", "store-api-v1", "-o", "json"]:
+            result = {"spec": {"replicas": drill.recovered_desired if drill.deleted else drill.desired}}
+        elif args == ["get", "pods", "-l", "app=store-api,version=v1", "-o", "json"]:
+            pods = json.loads(json.dumps(drill.after if drill.deleted else drill.initial))
+            if drill.deleted and drill.clock < drill.ready_after:
+                for item in pods:
+                    if item["metadata"]["uid"] == "c":
+                        item["status"]["conditions"][0]["status"] = "False"
+            result = {"items": pods}
+        elif args == ["delete", "pod", "v1-a", "--now", "--wait=false"]:
+            drill.deleted = True
+            result = {}
+        else:
+            raise AssertionError(f"Unexpected kubectl call: {args}")
+        return SimpleNamespace(stdout=json.dumps(result))
+
+    def read(url, **kwargs):
+        drill.api_samples.append((drill.clock, drill.deleted))
+        return Mock(status_code=200, json=Mock(return_value=[]))
+
+    drill.run = Mock(side_effect=run)
+    drill.read = Mock(side_effect=read)
+    monkeypatch.setattr(controller_module.subprocess, "run", drill.run)
+    monkeypatch.setattr(requests, "get", drill.read)
+    return drill
+
+
+def test_pod_drill_checks_v1_replacement_and_samples_during_recovery(pod_drill):
+    drill = pod_drill
+
+    assert drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    assert drill.deleted
+    assert any(deleted and when < drill.ready_after for when, deleted in drill.api_samples)
+    assert sum(deleted for _, deleted in drill.api_samples) >= 5
+    assert any("v1-c is Ready" in line for line in drill.logs)
+    assert all(entry.kwargs["check"] and entry.kwargs["timeout"] == 15 for entry in drill.run.call_args_list)
+    assert all(entry == call("https://store.example/api/products", timeout=5, allow_redirects=False)
+               for entry in drill.read.call_args_list)
+    assert len([entry for entry in drill.run.call_args_list if entry.args[0][3] == "delete"]) == 1
+
+
+@pytest.mark.parametrize("site", [None, "http://store.example", "https:///missing-host", "https://user:secret@store.example"])
+def test_pod_drill_requires_deployed_https_url_before_deletion(pod_drill, monkeypatch, site):
+    drill = pod_drill
+    drill.controller._tf_outputs["storefront_url"] = site
+    monkeypatch.setenv("FS_BASE_URL", "https://fallback.example")
+
+    assert not drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    drill.run.assert_not_called()
+    drill.read.assert_not_called()
+
+
+@pytest.mark.parametrize("blocker", ["single-v1", "not-ready", "terminating", "desired-one"])
+def test_pod_drill_requires_two_ready_v1_pods_before_deletion(pod_drill, blocker):
+    drill = pod_drill
+    if blocker == "single-v1":
+        drill.initial.pop()
+    elif blocker == "not-ready":
+        drill.initial[-1] = pod("v1-b", "b", ready=False)
+    elif blocker == "terminating":
+        drill.initial[-1] = pod("v1-b", "b", terminating=True)
+    else:
+        drill.desired = 1
+
+    assert not drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    assert not drill.deleted
+
+
+@pytest.mark.parametrize("command", [["get", "deployment"], ["get", "pods"], ["delete", "pod"]])
+def test_pod_drill_checks_kubectl_failures(pod_drill, command):
+    drill = pod_drill
+    drill.fail_command = command
+
+    assert not drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    assert not drill.deleted
+    assert not any("SUCCESS" in line for line in drill.logs)
+
+
+@pytest.mark.parametrize("failure", ["http", "redirect", "network", "not-products", "json"])
+@pytest.mark.parametrize("after_delete", [False, True])
+def test_pod_drill_rejects_failed_api_samples(pod_drill, failure, after_delete):
+    drill = pod_drill
+    response = Mock(status_code=200, json=Mock(return_value=[]))
+    if failure == "http":
+        response.status_code = 503
+    elif failure == "redirect":
+        response.status_code = 302
+    elif failure == "network":
+        response = requests.ConnectionError("API unreachable")
+    elif failure == "not-products":
+        response.json.return_value = {"message": "not a product list"}
+    else:
+        response.json.side_effect = ValueError("invalid JSON")
+    drill.read.side_effect = ([Mock(status_code=200, json=Mock(return_value=[]))] if after_delete else []) + [response]
+
+    assert not drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    assert drill.deleted == after_delete
+    assert not any("SUCCESS" in line for line in drill.logs)
+
+
+@pytest.mark.parametrize("missing", ["old-pod-remains", "same-uid", "same-name", "old-pending", "only-v2", "desired-capacity", "not-ready"])
+def test_pod_drill_never_passes_without_new_ready_identity_and_capacity(pod_drill, missing):
+    drill = pod_drill
+    if missing == "old-pod-remains":
+        drill.after.append(pod("v1-a", "a", terminating=True))
+    elif missing == "same-uid":
+        drill.after[-1] = pod("v1-c", "a")
+    elif missing == "same-name":
+        drill.after[-1] = pod("v1-a", "c")
+    elif missing == "old-pending":
+        drill.initial.append(pod("v1-c", "c", ready=False))
+    elif missing == "only-v2":
+        drill.after[-1] = pod("v2-new", "c", version="v2")
+    elif missing == "desired-capacity":
+        drill.recovered_desired = 3
+    else:
+        drill.ready_after = 600
+
+    assert not drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    assert drill.clock == 300
+    assert not any("SUCCESS" in line for line in drill.logs)
+
+
+def test_pod_drill_accepts_current_scaled_up_ready_capacity(pod_drill):
+    drill = pod_drill
+    drill.recovered_desired = 3
+    drill.after.append(pod("v1-d", "d"))
+
+    assert drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    assert any("3/3 desired" in line for line in drill.logs)
+
+
+def test_pod_drill_subprocess_timeout_is_not_success(pod_drill):
+    drill = pod_drill
+    drill.run.side_effect = subprocess.TimeoutExpired("kubectl", 15)
+
+    assert not drill.controller.run_pod_kill_drill(drill.logs.append)
+
+    assert not drill.deleted
+    assert not any("SUCCESS" in line for line in drill.logs)

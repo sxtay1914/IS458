@@ -1305,61 +1305,79 @@ class TestController:
             return False
 
     def run_pod_kill_drill(self, log_cb: Callable[[str], None]) -> bool:
-        """Abruptly terminate a store-api pod and verify zero-downtime routing & auto-recovery."""
-        log_cb("🔍 [Step 1/4] Querying active store-api pods in Kubernetes...")
+        """Delete one Ready v1 pod, sample the API and verify replacement readiness."""
         try:
+            import requests
+            from urllib.parse import urlsplit
+
+            site = self.get_terraform_outputs().get("storefront_url")
+            parsed = urlsplit(site or "")
+            if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+                raise RuntimeError("A deployed HTTPS storefront URL is required in Terraform outputs.")
+            api_url = site.rstrip("/") + "/api/products"
             k_env = os.environ.copy()
             if (APP_ROOT / ".kubeconfig").exists():
                 k_env["KUBECONFIG"] = str(APP_ROOT / ".kubeconfig")
-            res = subprocess.run(
-                ["kubectl", "get", "pods", "-n", "fashionstore", "-l", "app=store-api", "-o", "jsonpath={.items[*].metadata.name}"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                env=k_env,
-            )
-            pods = res.stdout.strip().split()
-            if not pods:
-                log_cb("⚠️ No store-api pods found. Have Kubernetes workloads been deployed with `make k8s-apply`?")
-                return False
 
-            target_pod = pods[0]
-            log_cb(f"   Found {len(pods)} running pods: {', '.join(pods)}")
-            log_cb(f"💥 [Step 2/4] Injecting Compute Failure: Abruptly terminating pod `{target_pod}`...")
+            def kubectl(*args):
+                return subprocess.run(
+                    ["kubectl", "-n", "fashionstore", *args], check=True,
+                    capture_output=True, text=True, timeout=15, env=k_env,
+                ).stdout
 
-            del_res = subprocess.run(
-                ["kubectl", "delete", "pod", target_pod, "-n", "fashionstore", "--now"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                env=k_env,
-            )
-            log_cb(f"   {del_res.stdout.strip() if del_res.stdout else del_res.stderr.strip()}")
+            def ready_v1(pods):
+                return [pod for pod in pods if (
+                    pod.get("metadata", {}).get("labels", {}).get("app") == "store-api"
+                    and pod["metadata"]["labels"].get("version") == "v1"
+                    and not pod["metadata"].get("deletionTimestamp")
+                    and pod.get("status", {}).get("phase") == "Running"
+                    and any(condition.get("type") == "Ready" and condition.get("status") == "True"
+                            for condition in pod["status"].get("conditions", []))
+                )]
 
-            log_cb("🌐 [Step 3/4] Testing API availability through surviving replica pods...")
-            tf_out = self.get_terraform_outputs()
-            site = tf_out.get("storefront_url", os.environ.get("FS_BASE_URL"))
-            if site and site.startswith("http"):
-                import requests
-                for i in range(5):
-                    try:
-                        r = requests.get(f"{site}/api/products", timeout=5)
-                        log_cb(f"   Request {i+1}/5 -> HTTP {r.status_code} OK (Zero 502/504 errors)")
-                    except Exception as re:
-                        log_cb(f"   Request {i+1}/5 error: {re}")
-                    time.sleep(1)
+            def sample_api():
+                response = requests.get(api_url, timeout=5, allow_redirects=False)
+                if response.status_code != 200 or not isinstance(response.json(), list):
+                    raise RuntimeError(f"API sample failed: HTTP {response.status_code}; expected a JSON product list.")
 
-            log_cb("⏳ [Step 4/4] Watching Kubernetes ReplicaSet schedule replacement pod...")
-            time.sleep(5)
-            check_res = subprocess.run(
-                ["kubectl", "get", "pods", "-n", "fashionstore", "-l", "app=store-api"],
-                capture_output=True,
-                text=True,
-                env=k_env,
-            )
-            log_cb("   Current pod status:\n" + check_res.stdout.strip())
-            log_cb("🎉 SUCCESS: Pod kill drill completed. High availability verified!")
-            return True
+            log_cb("🔍 [Step 1/4] Checking the API and Ready v1 replicas before deletion...")
+            sample_api()
+            deployment = json.loads(kubectl("get", "deployment", "store-api-v1", "-o", "json"))
+            if deployment["spec"]["replicas"] < 2:
+                raise RuntimeError("store-api-v1 must have at least two desired replicas before this drill.")
+            pods = json.loads(kubectl("get", "pods", "-l", "app=store-api,version=v1", "-o", "json"))["items"]
+            ready = ready_v1(pods)
+            if len(ready) < 2:
+                raise RuntimeError("At least two Ready, non-terminating v1 pods are required; no pod was deleted.")
+            original_uids = {pod["metadata"]["uid"] for pod in pods}
+            original_names = {pod["metadata"]["name"] for pod in pods}
+            target = ready[0]["metadata"]
+            log_cb(f"💥 [Step 2/4] Deleting Ready v1 pod {target['name']} (UID {target['uid']})...")
+            kubectl("delete", "pod", target["name"], "--now", "--wait=false")
+
+            log_cb("🌐 [Step 3/4] Sampling the API and waiting up to 300s for a new Ready v1 replacement...")
+            deadline = time.monotonic() + 300
+            samples = 0
+            while time.monotonic() < deadline:
+                sample_api()
+                samples += 1
+                log_cb(f"   API sample {samples}: HTTP 200 with a product list.")
+                pods = json.loads(kubectl("get", "pods", "-l", "app=store-api,version=v1", "-o", "json"))["items"]
+                deployment = json.loads(kubectl("get", "deployment", "store-api-v1", "-o", "json"))
+                expected = deployment["spec"]["replicas"]
+                ready = ready_v1(pods)
+                replacements = [pod for pod in ready if (
+                    pod["metadata"]["uid"] not in original_uids and pod["metadata"]["name"] not in original_names
+                )]
+                target_gone = all(pod["metadata"]["uid"] != target["uid"] for pod in pods)
+                if time.monotonic() >= deadline:
+                    break
+                if target_gone and replacements and expected >= 2 and len(ready) >= expected and samples >= 5:
+                    log_cb(f"✅ [Step 4/4] Replacement {replacements[0]['metadata']['name']} is Ready; {len(ready)}/{expected} desired v1 replicas are Ready.")
+                    log_cb(f"🎉 SUCCESS: Replacement readiness verified; all {samples} API samples returned HTTP 200. These samples do not prove uninterrupted availability.")
+                    return True
+                time.sleep(5)
+            raise RuntimeError(f"Replacement readiness and desired replica capacity were not verified within 300s ({samples} successful API samples).")
         except Exception as e:
             log_cb(f"❌ Error during pod kill drill: {e}")
             return False
