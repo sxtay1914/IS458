@@ -1086,7 +1086,7 @@ class TestController:
             if not rule_arn or not v1_arn or not v2_arn:
                 return {"success": False, "message": "ALB listener rule not found."}
 
-            elbv2.modify_listener_rule(
+            elbv2.modify_rule(
                 RuleArn=rule_arn,
                 Actions=[
                     {
