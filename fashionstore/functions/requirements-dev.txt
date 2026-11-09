@@ -1,5 +1,6 @@
 PyMySQL==1.1.1
 pytest==8.3.5
 boto3==1.38.0
+requests>=2.31.0
 moto[s3]==5.1.4
 jsonschema==4.23.0

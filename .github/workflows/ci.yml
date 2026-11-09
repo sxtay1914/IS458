@@ -51,6 +51,10 @@ jobs:
         run: make db-migrate
       - name: pytest against real MySQL
         run: make py-test
+      - name: dashboard tests (mocked AWS and HTTP)
+        run: >-
+          python -m pytest dashboard -q --confcutdir=dashboard
+          -o "markers=chaos: live-stack drill exercised with mocks in this suite"
       - name: package Lambdas
         run: make package
 

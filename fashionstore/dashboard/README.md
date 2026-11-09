@@ -26,6 +26,25 @@ streamlit run dashboard/app.py
 
 Once launched, open `http://localhost:8501` in your browser.
 
+Before running live drills:
+
+- Deploy the demo and sign in to AWS; the dashboard reads the demo Terraform outputs.
+- Set `FS_USER_A_EMAIL` to a dedicated Cognito test shopper and `FS_TEST_PASSWORD` to its password. Use an SES-verified recipient while the demo is in the SES sandbox. The payment drill replaces this shopper's cart and creates a real order.
+- Authenticated load tests also require distinct `loadtest+N@example.com` shoppers in this deployment using `FS_TEST_PASSWORD`. The selected profile determines how many are needed; missing or invalid tokens stop the run.
+
+**Clear Display** clears the selected drill's saved output and restarts its telemetry display baseline. It does not change AWS resources, purge queues, reset inventory or recover a failed drill.
+
+## Offline Dashboard Tests
+
+From `fashionstore/`, run the same command used by the CI `functions` job:
+
+```bash
+python -m pip install -r functions/requirements-dev.txt
+python -m pytest dashboard -q --confcutdir=dashboard -o "markers=chaos: live-stack drill exercised with mocks in this suite"
+```
+
+These tests mock AWS, HTTP and subprocess calls; they require no deployed stack or AWS credentials. The dashboard-only collection excludes the live-test fixtures in `tests/conftest.py`. The marker declaration registers the imported chaos test without hiding warnings.
+
 ---
 
 ## How It Works with AWS CloudWatch
@@ -52,7 +71,7 @@ During a presentation or video recording:
 ## Features
 
 1. **Chaos & Failure Drills**:
-   * **Payment Outage**: Throttles `payment-api` Lambda to 0 concurrency, places an order, watches it stay safely pending in SQS, restores concurrency, and verifies eventual confirmation.
+   * **Payment Outage**: Validates the test shopper and cart, throttles `payment-api` Lambda to 0 concurrency, submits a checkout, and checks that it remains `PENDING` after 45 seconds. Restores the original concurrency and polls for up to 420 seconds for `CONFIRMED`, allowing for the queue's 180-second visibility timeout. Allow roughly eight minutes plus sign-in and API calls. Rejection or timeout fails the drill; success proves acceptance during the outage and confirmation after restoration, without proving a worker attempted payment during the outage.
    * **Poison Message & DLQ Redrive**: Quarantines failed messages into `checkout-dlq` and invokes SQS redrive.
    * **Abrupt Pod Kill**: Terminates an active container pod abruptly while verifying zero 5xx errors via ALB TargetGroupBinding.
    * **SQS Partition & Reconciler**: Simulates store-api pod network partition and demonstrates the background `@Scheduled` reconciler recovering missed orders.
