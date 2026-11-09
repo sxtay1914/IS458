@@ -227,8 +227,8 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   viewer_certificate {
+    # CloudFront fixes the security policy when using its default certificate.
     cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1.2_2021"
   }
 
   tags = var.tags
