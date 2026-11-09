@@ -1,0 +1,6 @@
+{
+  "description": "Super-fast 75-second benchmark tuned for live presentation demonstrations without dead air.",
+  "browse":     { "stages": [ { "duration": "10s", "target": 15 }, { "duration": "15s", "target": 25 }, { "duration": "5s", "target": 0 } ] },
+  "checkout":   { "stages": [ { "duration": "10s", "target": 3 },  { "duration": "15s", "target": 5 }, { "duration": "5s", "target": 0 } ] },
+  "flash_sale": { "buyers": 5 }
+}

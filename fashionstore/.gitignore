@@ -13,6 +13,7 @@ backend.hcl
 .env
 .env.*
 !.env.example
+.kubeconfig
 
 # Build output
 node_modules/
@@ -21,6 +22,7 @@ target/
 __pycache__/
 .pytest_cache/
 *.zip
+*-summary.json
 
 # Evidence exports can be large; commit only the curated set
 evidence/raw/

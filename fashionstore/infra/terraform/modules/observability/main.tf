@@ -143,38 +143,77 @@ resource "aws_cloudwatch_dashboard" "this" {
   dashboard_name = "${var.name}-overview"
 
   dashboard_body = jsonencode({
+    start          = "-PT15M"
+    periodOverride = "inherit"
     widgets = [
       {
-        type = "metric", x = 0, y = 0, width = 12, height = 6
+        type = "alarm", x = 0, y = 0, width = 24, height = 4
+        properties = {
+          title  = "System Safety & Ops Alarms"
+          alarms = [for k, a in aws_cloudwatch_metric_alarm.this : a.arn]
+        }
+      },
+      {
+        type = "metric", x = 0, y = 4, width = 12, height = 6
         properties = {
           title  = "Checkout queue"
           region = local.region
           stat   = "Maximum"
           period = 60
           metrics = [
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.checkout_queue_name],
-            ["AWS/SQS", "ApproximateAgeOfOldestMessage", "QueueName", var.checkout_queue_name, { yAxis = "right" }],
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.checkout_dlq_name, { label = "DLQ depth" }],
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.checkout_queue_name, { label = "Visible Messages" }],
+            ["AWS/SQS", "ApproximateAgeOfOldestMessage", "QueueName", var.checkout_queue_name, { yAxis = "right", label = "Oldest Age (s)" }],
+            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", var.checkout_dlq_name, { label = "DLQ depth (Poison/Failed)" }],
           ]
         }
       },
       {
-        type = "metric", x = 12, y = 0, width = 12, height = 6
+        type = "metric", x = 12, y = 4, width = 12, height = 6
         properties = {
           title  = "process-checkout"
           region = local.region
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/Lambda", "Invocations", "FunctionName", var.function_names["process-checkout"]],
-            ["AWS/Lambda", "Errors", "FunctionName", var.function_names["process-checkout"]],
-            ["AWS/Lambda", "Throttles", "FunctionName", var.function_names["process-checkout"]],
-            ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", var.function_names["process-checkout"], { stat = "Maximum", yAxis = "right" }],
+            ["AWS/Lambda", "Invocations", "FunctionName", var.function_names["process-checkout"], { label = "Invocations" }],
+            ["AWS/Lambda", "Errors", "FunctionName", var.function_names["process-checkout"], { label = "Errors" }],
+            ["AWS/Lambda", "Throttles", "FunctionName", var.function_names["process-checkout"], { label = "Throttles" }],
+            ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", var.function_names["process-checkout"], { stat = "Maximum", yAxis = "right", label = "Max Concurrency" }],
           ]
         }
       },
       {
-        type = "metric", x = 0, y = 6, width = 12, height = 6
+        type = "metric", x = 0, y = 10, width = 12, height = 6
+        properties = {
+          title  = "Payment API Failures & Worker Retries"
+          region = local.region
+          stat   = "Sum"
+          period = 60
+          metrics = [
+            ["AWS/Lambda", "Invocations", "FunctionName", var.function_names["payment-api"], { label = "payment-api Invocations" }],
+            ["AWS/Lambda", "Throttles", "FunctionName", var.function_names["payment-api"], { label = "payment-api Throttles (Failure Injection)" }],
+            ["AWS/Lambda", "Errors", "FunctionName", var.function_names["payment-api"], { label = "payment-api Errors" }],
+            ["AWS/Lambda", "Errors", "FunctionName", var.function_names["process-checkout"], { yAxis = "right", label = "process-checkout Errors" }],
+          ]
+        }
+      },
+      {
+        type = "metric", x = 12, y = 10, width = 12, height = 6
+        properties = {
+          title  = "ALB Target Group Health & 5XX Errors"
+          region = local.region
+          stat   = "Average"
+          period = 60
+          metrics = [
+            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", var.target_group_arn_suffixes["v1"], "LoadBalancer", var.alb_arn_suffix, { stat = "Minimum", label = "v1 Healthy Hosts" }],
+            ["AWS/ApplicationELB", "UnHealthyHostCount", "TargetGroup", var.target_group_arn_suffixes["v1"], "LoadBalancer", var.alb_arn_suffix, { stat = "Maximum", label = "v1 Unhealthy Hosts" }],
+            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", var.target_group_arn_suffixes["v2"], "LoadBalancer", var.alb_arn_suffix, { stat = "Minimum", label = "v2 Healthy Hosts" }],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", var.alb_arn_suffix, { stat = "Sum", yAxis = "right", label = "Target 5XX Errors (Zero Downtime)" }],
+          ]
+        }
+      },
+      {
+        type = "metric", x = 0, y = 16, width = 12, height = 6
         properties = {
           title  = "Pilot split: requests per target group"
           region = local.region
@@ -188,7 +227,7 @@ resource "aws_cloudwatch_dashboard" "this" {
         }
       },
       {
-        type = "metric", x = 12, y = 6, width = 12, height = 6
+        type = "metric", x = 12, y = 16, width = 12, height = 6
         properties = {
           title  = "RDS"
           region = local.region

@@ -12,7 +12,7 @@ OUT       = $(TF) -chdir=$(DEMO_DIR) output
 .PHONY: help fmt validate test tf-test py-test api-test web-test e2e db-local-up db-migrate db-seed \
         package api-run bootstrap init-demo plan-demo deploy-demo k8s-config addons k8s-apply \
         db-migrate-remote db-seed-remote push-api deploy-storefront test-users smoke verify-private \
-        live-test e2e-live load-browse load-checkout load-flash destroy-demo
+        live-test e2e-live load-browse load-checkout load-flash dashboard destroy-demo
 
 help:
 	@grep -E '^[a-z0-9-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -146,6 +146,9 @@ load-checkout: ## k6 checkout (needs tests/load/tokens.json)
 
 load-flash: ## k6 flash sale on FLASH-001 (reseed first: make db-seed-remote)
 	k6 run -e BASE_URL=$(SITE) -e PROFILE=$(or $(PROFILE),smoke) tests/load/flash-sale.js
+
+dashboard: ## launch the interactive Streamlit test controller
+	@which uv >/dev/null 2>&1 && uv run --with streamlit --with boto3 --with requests --with pytest --with pandas streamlit run dashboard/app.py || streamlit run dashboard/app.py
 
 # ---------------------------------------------------------------- teardown (manual)
 destroy-demo: ## steps 2-4 of the teardown checklist in docs/implementation-plan.md
