@@ -345,7 +345,7 @@ with tab_chaos:
 
     drill_options = [
         "💥 Drill 1: Payment Outage & SQS Retry (Transient Banking Downtime)",
-        "☠️ Drill 2: DLQ Redrive & Order Recovery (Failed Message Quarantine)",
+        "♻️ Drill 2: Synthetic DLQ Redrive (Worker Processing)",
         "💀 Drill 3: Abrupt Pod Kill & Zero-Downtime HA (Compute Failover)",
         "🔌 Drill 4: SQS Disconnect & Outbox Reconciler (Network Partition Recovery)",
         "⚡ Drill 5: Flash Sale Atomic Inventory Lock (Zero Oversell Concurrency)",
@@ -377,20 +377,20 @@ with tab_chaos:
             "btn_key": "btn_run_payment",
             "action": lambda cb: controller.run_payment_outage_drill(cb),
         },
-        "☠️ Drill 2: DLQ Redrive & Order Recovery (Failed Message Quarantine)": {
-            "title": "☠️ DLQ Redrive & Order Recovery Drill",
-            "desc": "Quarantines failed order payloads into the Dead-Letter Queue to protect workers, then redrives them to complete processing.",
+        "♻️ Drill 2: Synthetic DLQ Redrive (Worker Processing)": {
+            "title": "♻️ Synthetic DLQ Redrive Drill",
+            "desc": "Places one valid synthetic message directly in the DLQ, then verifies redrive completion and the worker's matching confirmation.",
             "anim_fn": render_dlq_redrive_animation,
-            "does": "Parks an unacknowledged order payload in the DLQ, then dispatches an SQS redrive task to move it back to the checkout queue for worker processing.",
-            "safety": "<b>Dead-Letter Queue Isolation (maxReceiveCount = 5)</b>: Prevents failing messages from monopolizing workers (head-of-line blocking). Once downstream dependencies recover, operators redrive them via <code>start_message_move_task</code> without losing orders.",
+            "does": "Requires an empty DLQ and a verified <code>FS_USER_A_EMAIL</code>. Injects a synthetic purchase of one <code>BAG-001</code>, then starts redrive. A confirmed purchase consumes stock and triggers the normal email pipeline.",
+            "safety": "<b>Verified Redrive Outcome</b>: Passes only when this redrive task completes and its synthetic checkout ID has a <code>checkout_processed</code> log with <code>CONFIRMED</code>. This does not test retry exhaustion or an API checkout. Redrive operates on the whole DLQ.",
             "cw_proof": [
-                "<i>SQS Control Plane</i>: SQS <code>start_message_move_task</code> transitions DLQ depth <b>0 ➔ 1 ➔ 0</b>.",
-                "<i>Main Pipeline Consumer</i>: Redriven message is picked up by <code>process-checkout</code> and confirmed.",
-                "<i>Alarm Logic</i>: <code>checkout-dlq-not-empty</code> monitors 5-min intervals; sub-minute redrives resolve before breach.",
+                "<i>SQS Control Plane</i>: Correlate the task started by this run with its <code>COMPLETED</code> record.",
+                "<i>Worker Logs</i>: Match both the synthetic checkout ID and <code>CONFIRMED</code> status.",
+                "<i>Queue Metrics</i>: Approximate counts may lag; a short drill may not trigger the DLQ alarm.",
             ],
             "target": "SQS: checkout-dlq & move_task",
-            "duration": "~40 seconds",
-            "btn_label": "Run DLQ Redrive Drill",
+            "duration": "Up to ~5 minutes for task completion and worker-log delivery",
+            "btn_label": "Run Synthetic DLQ Redrive",
             "btn_key": "btn_run_dlq",
             "action": lambda cb: controller.run_poison_dlq_drill(cb),
         },
@@ -450,6 +450,8 @@ with tab_chaos:
 
     # 1. Visualization (only if animated component exists for this drill)
     if drill.get("anim_fn"):
+        if "Drill 2" in selected_drill_key:
+            st.caption("Conceptual DLQ lifecycle below. This control starts with direct synthetic DLQ insertion; it does not execute the animation's five failed receives or prove its alarm sequence.")
         components.html(drill["anim_fn"](), height=490, scrolling=False)
 
     st.write("")
@@ -586,49 +588,50 @@ with tab_chaos:
                     f"{s['dlq_depth']}",
                     delta="0 (Clean)" if s["dlq_depth"] == 0 else f"{s['dlq_depth']} Quarantined",
                     delta_color="normal" if s["dlq_depth"] == 0 else "inverse",
-                    help="Corrupted messages held in isolation in checkout-dlq to prevent poison pill crash-loops (0 = healthy baseline).",
+                    help="Approximate visible messages in the DLQ, including synthetic test messages. Counts may lag.",
                 )
                 m2.metric(
                     "Main Queue Backlog",
                     f"{s['main_depth']}",
                     delta="0 (Drained)" if s["main_depth"] == 0 else f"{s['main_depth']} Pending",
                     delta_color="normal",
-                    help="Active checkout orders waiting in fashionstore-demo-checkout-requests for worker processing.",
+                    help="Approximate messages waiting in checkout-requests for worker processing.",
                 )
                 m3.metric(
-                    "SQS Redrive Status",
+                    "Latest SQS Redrive Status",
                     s["move_status"],
                     delta="API Dispatched" if s["move_status"] in ["RUNNING", "COMPLETED"] else None,
                     delta_color="normal",
                     help="Status of AWS SQS start_message_move_task control plane task.",
                 )
                 m4.metric(
-                    "Messages Recovered",
+                    "Messages Moved",
                     f"{s['messages_moved']}",
-                    delta="Zero Data Loss" if s["messages_moved"] > 0 else None,
+                    delta="Reported by SQS" if s["messages_moved"] > 0 else None,
                     delta_color="normal",
-                    help="Messages moved back from DLQ to checkout queue and confirmed by worker Lambda.",
+                    help="Approximate messages moved by the latest task. Worker confirmation is checked separately.",
                 )
 
-                # Live Audit Proof Cards from CloudWatch Logs (<300ms)
+                # Recent worker confirmations may include other checkouts.
                 if s.get("confirmed_records"):
-                    st.markdown("##### ⚡ Instant Audit Evidence (<300ms from CloudWatch Logs)")
+                    st.markdown("##### ⚡ Recent Worker Confirmations from CloudWatch Logs")
+                    st.caption("These records can include other checkouts; the drill result separately matches its own synthetic checkout ID.")
                     records = s["confirmed_records"][-3:]
                     rec_cols = st.columns(len(records))
                     for idx, rec in enumerate(records):
                         with rec_cols[idx]:
-                            st.success(f"**Order ID:** `{rec['checkout_id'][:8]}...`\n\n**Status:** `CONFIRMED`\n\n**Processed:** `{rec['time']}`")
+                            st.success(f"**Checkout ID:** `{rec['checkout_id'][:8]}...`\n\n**Status:** `CONFIRMED`\n\n**Processed:** `{rec['time']}`")
 
                 if tel.get("df") is not None and hasattr(tel["df"], "empty") and not tel["df"].empty:
                     st.caption("📈 **Queue Quarantine & Backlog History (Past 15 Minutes — 1-Min Interval, SGT):**")
                     st.line_chart(tel["df"], height=230)
-                    st.caption("ℹ️ *Note: CloudWatch SQS metrics aggregate every 60s (points settle within 1–2 mins), while audit log events above reflect instantly.*")
+                    st.caption("ℹ️ *Queue attributes are approximate. CloudWatch metrics use 60-second periods; metrics and logs can arrive after a delay.*")
 
                 with st.expander("💡 Metric Definitions: What does 'Visible Messages' & 'DLQ Depth' mean?", expanded=False):
                     st.markdown("""
-                    - **Quarantined in DLQ (`ApproximateNumberOfMessagesVisible` on DLQ)**: In AWS SQS terminology, a *"visible message"* is a message currently waiting in the queue and available to be fetched. Because a Dead-Letter Queue has **no continuous worker polling it**, visible messages in a DLQ represent **quarantined poison pills** isolated from production traffic to prevent head-of-line blocking. Normal baseline = **`0`**.
-                    - **Main Queue Backlog (`ApproximateNumberOfMessagesVisible` on checkout-requests)**: Legitimate customer orders waiting in the primary buffer queue to be ingested by the `process-checkout` Lambda worker.
-                    - **AWS SQS Redrive (`start_message_move_task`)**: An AWS native control plane operation that safely drains messages from a DLQ back into the primary queue for reprocessing without bespoke operator scripts.
+                    - **DLQ visible messages**: Approximate messages available for redrive, including this drill's synthetic payload. Telemetry never receives messages to inspect them.
+                    - **Main queue backlog**: Approximate messages waiting for the checkout worker.
+                    - **AWS SQS redrive**: Moves messages from the DLQ to the checkout queue. Moving a message does not establish that processing succeeded.
                     """)
 
                 if tel.get("move_task"):

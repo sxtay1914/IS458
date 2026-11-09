@@ -389,3 +389,221 @@ def test_clear_display_preserves_cloud_resources_and_other_history(drill_name, m
     aws_client.assert_not_called()
     run.assert_not_called()
     popen.assert_not_called()
+
+
+@pytest.fixture
+def dlq_drill(monkeypatch):
+    controller = Controller()
+    controller._tf_outputs = {
+        "checkout_queue_url": "https://sqs.example/main",
+        "checkout_dlq_url": "https://sqs.example/dlq",
+        "function_names": {"process-checkout": "test-worker"},
+    }
+    monkeypatch.setenv("FS_USER_A_EMAIL", "verified@example.com")
+    checkout_id = "00000000-0000-4000-8000-000000000001"
+    monkeypatch.setattr(controller_module.uuid, "uuid4", lambda: checkout_id)
+    clock = [1000.0]
+    monkeypatch.setattr(controller_module.time, "time", lambda: clock[0])
+    monkeypatch.setattr(controller_module.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(controller_module.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    sqs, logs, ses = Mock(), Mock(), Mock()
+    monkeypatch.setattr(boto3, "client", lambda service, **kwargs: {"sqs": sqs, "logs": logs, "ses": ses}[service])
+    ses.get_identity_verification_attributes.return_value = {
+        "VerificationAttributes": {"verified@example.com": {"VerificationStatus": "Success"}},
+    }
+    attributes = {
+        "dlq": {"QueueArn": "dlq-arn", "ApproximateNumberOfMessages": "0", "ApproximateNumberOfMessagesNotVisible": "0"},
+        "main": {"QueueArn": "main-arn", "ApproximateNumberOfMessages": "0", "ApproximateNumberOfMessagesNotVisible": "0"},
+    }
+    sqs.get_queue_attributes.side_effect = lambda **kwargs: {"Attributes": attributes[kwargs["QueueUrl"].rsplit("/", 1)[1]]}
+    baseline = [{"StartedTimestamp": 900_000, "SourceArn": "dlq-arn", "DestinationArn": "main-arn", "Status": "COMPLETED", "ApproximateNumberOfMessagesMoved": 0}]
+    started = [0]
+    statuses = ["RUNNING", "COMPLETED"]
+    task_overrides = {}
+    extra_tasks = []
+
+    def start_task(**kwargs):
+        started[0] = int(clock[0] * 1000)
+        clock[0] += 0.1
+        return {"TaskHandle": "our-task"}
+
+    def list_tasks(**kwargs):
+        if not sqs.start_message_move_task.called:
+            return {"Results": baseline}
+        status = statuses.pop(0) if len(statuses) > 1 else statuses[0]
+        task = {
+            "StartedTimestamp": started[0], "SourceArn": "dlq-arn", "DestinationArn": "main-arn",
+            "Status": status, "ApproximateNumberOfMessagesMoved": 1,
+        }
+        if status == "RUNNING":
+            task["TaskHandle"] = "our-task"
+        task.update(task_overrides)
+        return {"Results": [task, *extra_tasks, *baseline]}
+
+    sqs.start_message_move_task.side_effect = start_task
+    sqs.list_message_move_tasks.side_effect = list_tasks
+    records = [{"event": "checkout_processed", "checkout_id": checkout_id, "status": "CONFIRMED"}]
+
+    def log_page():
+        return {"events": [
+            {"message": "[INFO] " + json.dumps(record), "timestamp": int(clock[0] * 1000)}
+            for record in records
+        ]}
+
+    logs.get_paginator.return_value.paginate.side_effect = lambda **kwargs: [log_page()]
+    logs.filter_log_events.side_effect = lambda **kwargs: log_page()
+    monkeypatch.setattr(controller, "_build_time_series_df", Mock(return_value=None))
+    return SimpleNamespace(
+        controller=controller, sqs=sqs, logs_client=logs, ses=ses, records=records,
+        attributes=attributes, baseline=baseline, statuses=statuses, task_overrides=task_overrides,
+        extra_tasks=extra_tasks, started=started, checkout_id=checkout_id, clock=clock, logs=[],
+    )
+
+
+@pytest.mark.parametrize("fast_completion", [False, True])
+def test_dlq_success_requires_its_completed_task_and_matching_confirmation(dlq_drill, fast_completion):
+    drill = dlq_drill
+    if fast_completion:
+        drill.statuses[:] = ["COMPLETED"]  # AWS omits TaskHandle for completed tasks.
+
+    assert drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    body = json.loads(drill.sqs.send_message.call_args.kwargs["MessageBody"])
+    assert body["checkout_id"] == drill.checkout_id
+    assert body["email"] == "verified@example.com"
+    assert body["items"] == [{"sku": "BAG-001", "qty": 1}]
+    drill.sqs.start_message_move_task.assert_called_once_with(SourceArn="dlq-arn", DestinationArn="main-arn")
+    assert drill.logs_client.get_paginator.return_value.paginate.call_args.kwargs["filterPattern"] == f'"{drill.checkout_id}"'
+    drill.sqs.receive_message.assert_not_called()
+
+
+@pytest.mark.parametrize("status", ["FAILED", "CANCELLED", "CANCELLING", "RUNNING"])
+def test_dlq_incomplete_or_failed_task_cannot_pass(dlq_drill, status):
+    drill = dlq_drill
+    drill.statuses[:] = [status]
+
+    assert not drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    drill.logs_client.get_paginator.assert_not_called()
+    assert drill.clock[0] <= 1126.2
+    assert not any("SUCCESS" in line for line in drill.logs)
+
+
+@pytest.mark.parametrize("mismatch", ["baseline", "wrong-handle", "wrong-destination", "outside-window"])
+def test_dlq_does_not_accept_an_unrelated_completed_task(dlq_drill, mismatch):
+    drill = dlq_drill
+    if mismatch == "baseline":
+        drill.sqs.list_message_move_tasks.side_effect = lambda **kwargs: {"Results": drill.baseline}
+    elif mismatch == "wrong-handle":
+        drill.task_overrides["TaskHandle"] = "another-task"
+    elif mismatch == "wrong-destination":
+        drill.statuses[:] = ["COMPLETED"]
+        drill.task_overrides["DestinationArn"] = "another-queue"
+    else:
+        drill.statuses[:] = ["COMPLETED"]
+        drill.task_overrides["StartedTimestamp"] = 999_999
+
+    assert not drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    drill.logs_client.get_paginator.assert_not_called()
+
+
+def test_dlq_rejects_ambiguous_new_tasks(dlq_drill):
+    drill = dlq_drill
+    drill.statuses[:] = ["COMPLETED"]
+    drill.extra_tasks.append({
+        "StartedTimestamp": 1_006_050, "SourceArn": "dlq-arn",
+        "DestinationArn": "main-arn", "Status": "COMPLETED",
+    })
+
+    assert not drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    assert any("ambiguous" in line for line in drill.logs)
+    drill.logs_client.get_paginator.assert_not_called()
+
+
+@pytest.mark.parametrize("evidence", ["rejected", "wrong-checkout", "wrong-event", "missing"])
+def test_dlq_never_passes_without_its_confirmed_worker_record(dlq_drill, evidence):
+    drill = dlq_drill
+    if evidence == "rejected":
+        drill.records[0]["status"] = "REJECTED"
+    elif evidence == "wrong-checkout":
+        drill.records[0]["checkout_id"] = "some-other-checkout"
+    elif evidence == "wrong-event":
+        drill.records[0]["event"] = "checkout_received"
+    else:
+        drill.records.clear()
+
+    assert not drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    assert drill.clock[0] <= 1188.2
+    assert not any("SUCCESS" in line for line in drill.logs)
+
+
+@pytest.mark.parametrize("operation", ["start_message_move_task", "list_message_move_tasks", "worker_logs"])
+def test_dlq_api_errors_are_failures(dlq_drill, operation):
+    drill = dlq_drill
+    if operation == "worker_logs":
+        drill.logs_client.get_paginator.return_value.paginate.side_effect = RuntimeError("logs unavailable")
+    else:
+        getattr(drill.sqs, operation).side_effect = RuntimeError("SQS unavailable")
+
+    assert not drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    assert not any("SUCCESS" in line for line in drill.logs)
+
+
+@pytest.mark.parametrize("blocker", ["missing-email", "unverified-email", "existing-messages", "active-task"])
+def test_dlq_preflight_blocks_unsafe_or_unconfigured_runs(dlq_drill, blocker, monkeypatch):
+    drill = dlq_drill
+    if blocker == "missing-email":
+        monkeypatch.delenv("FS_USER_A_EMAIL")
+    elif blocker == "unverified-email":
+        drill.ses.get_identity_verification_attributes.return_value = {"VerificationAttributes": {}}
+    elif blocker == "existing-messages":
+        drill.attributes["dlq"]["ApproximateNumberOfMessagesNotVisible"] = "1"
+    else:
+        drill.baseline[0]["Status"] = "RUNNING"
+
+    assert not drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    drill.sqs.send_message.assert_not_called()
+    drill.sqs.start_message_move_task.assert_not_called()
+
+
+def test_dlq_telemetry_does_not_receive_messages_or_invent_redrive_counts(dlq_drill):
+    drill = dlq_drill
+    drill.attributes["dlq"]["ApproximateNumberOfMessages"] = "3"
+    drill.attributes["main"]["ApproximateNumberOfMessages"] = "7"
+
+    telemetry = drill.controller.get_dlq_drill_telemetry()
+
+    assert telemetry["available"]
+    assert telemetry["summary"]["dlq_depth"] == 3
+    assert telemetry["summary"]["main_depth"] == 7
+    assert telemetry["summary"]["confirmed_checkouts"] == 1
+    assert telemetry["summary"]["messages_moved"] == 0
+    assert {entry[0] for entry in drill.sqs.method_calls} == {"get_queue_attributes", "list_message_move_tasks"}
+
+
+def test_dlq_missing_task_handle_does_not_claim_redrive_success(dlq_drill):
+    drill = dlq_drill
+    drill.sqs.start_message_move_task.side_effect = None
+    drill.sqs.start_message_move_task.return_value = {}
+
+    assert not drill.controller.run_poison_dlq_drill(drill.logs.append)
+
+    drill.logs_client.get_paginator.assert_not_called()
+    assert not any("SUCCESS" in line for line in drill.logs)
+
+
+def test_dlq_checks_all_log_pages_for_its_confirmation(dlq_drill):
+    drill = dlq_drill
+    paginate = drill.logs_client.get_paginator.return_value.paginate
+    paginate.side_effect = None
+    paginate.return_value = [
+        {"events": [{"message": json.dumps({"event": "checkout_received", "checkout_id": drill.checkout_id})}]},
+        {"events": [{"message": json.dumps(drill.records[0])}]},
+    ]
+
+    assert drill.controller.run_poison_dlq_drill(drill.logs.append)

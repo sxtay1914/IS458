@@ -469,7 +469,7 @@ class TestController:
             return {"available": False, "error": str(e)}
 
     def get_dlq_drill_telemetry(self, window_minutes: int = 15, since_timestamp: Optional[float] = None, **kwargs) -> Dict[str, Any]:
-        """Fetch telemetry specifically for Drill 2: Poison Message & DLQ Redrive."""
+        """Read DLQ attributes, redrive task status and worker logs without receiving messages."""
         tf_out = self.get_terraform_outputs()
         queue_url = tf_out.get("checkout_queue_url")
         dlq_url = tf_out.get("checkout_dlq_url")
@@ -484,22 +484,8 @@ class TestController:
             q_attr = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["ApproximateNumberOfMessages", "ApproximateNumberOfMessagesNotVisible"])["Attributes"]
 
             dlq_depth = int(dlq_attr.get("ApproximateNumberOfMessages", 0))
-            if dlq_depth > 0:
-                try:
-                    peek = sqs.receive_message(QueueUrl=dlq_url, MaxNumberOfMessages=1, WaitTimeSeconds=0, VisibilityTimeout=2).get("Messages", [])
-                    if not peek:
-                        dlq_depth = 0
-                except Exception:
-                    pass
             dlq_arn = dlq_attr.get("QueueArn")
             main_depth = int(q_attr.get("ApproximateNumberOfMessages", 0))
-            if main_depth > 0:
-                try:
-                    peek_main = sqs.receive_message(QueueUrl=queue_url, MaxNumberOfMessages=1, WaitTimeSeconds=0, VisibilityTimeout=2).get("Messages", [])
-                    if not peek_main:
-                        main_depth = 0
-                except Exception:
-                    pass
             in_flight = int(q_attr.get("ApproximateNumberOfMessagesNotVisible", 0))
 
             # Query SQS redrive move tasks
@@ -550,9 +536,6 @@ class TestController:
             except Exception:
                 pass
 
-            if moved_count == 0 and confirmed_records:
-                moved_count = len(confirmed_records)
-
             # Time series for DLQ depth & main queue
             q_dlq_name = dlq_url.split("/")[-1]
             q_main_name = queue_url.split("/")[-1]
@@ -587,7 +570,7 @@ class TestController:
             ]
 
             mapping = {
-                "dlq_visible": "Quarantined in DLQ (Poison Pills)",
+                "dlq_visible": "Messages Visible in DLQ",
                 "main_visible": "Main Queue Backlog (Pending Orders)",
             }
 
@@ -1193,102 +1176,129 @@ class TestController:
             return False
 
     def run_poison_dlq_drill(self, log_cb: Callable[[str], None]) -> bool:
-        """Inject a poison message to SQS and execute redrive."""
+        """Redrive a synthetic valid DLQ message and verify its worker confirmation."""
         tf_out = self.get_terraform_outputs()
         queue_url = tf_out.get("checkout_queue_url")
         dlq_url = tf_out.get("checkout_dlq_url")
-        proc_fn = tf_out.get("function_names", {}).get("process-checkout", "fashionstore-demo-process-checkout")
+        proc_fn = tf_out.get("function_names", {}).get("process-checkout")
+        email = os.environ.get("FS_USER_A_EMAIL")
 
-        if not queue_url or not dlq_url:
-            log_cb("❌ Error: SQS queues are not available.")
+        if not queue_url or not dlq_url or not proc_fn:
+            log_cb("❌ SQS queues and the checkout worker must be available in Terraform outputs.")
+            return False
+        if not email:
+            log_cb("❌ Set FS_USER_A_EMAIL to a verified SES recipient before running this drill.")
             return False
 
         try:
             import boto3
             sqs = boto3.client("sqs", region_name=self.region)
             logs = boto3.client("logs", region_name=self.region)
+            ses = boto3.client("ses", region_name=self.region)
+            verification = ses.get_identity_verification_attributes(Identities=[email])
+            if verification.get("VerificationAttributes", {}).get(email, {}).get("VerificationStatus") != "Success":
+                raise RuntimeError("FS_USER_A_EMAIL must be verified in SES in this region.")
 
-            dlq_arn = sqs.get_queue_attributes(QueueUrl=dlq_url, AttributeNames=["QueueArn"])["Attributes"]["QueueArn"]
+            dlq_attrs = sqs.get_queue_attributes(
+                QueueUrl=dlq_url, AttributeNames=["QueueArn", "ApproximateNumberOfMessages", "ApproximateNumberOfMessagesNotVisible", "ApproximateNumberOfMessagesDelayed"],
+            )["Attributes"]
+            dlq_arn = dlq_attrs["QueueArn"]
             src_arn = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])["Attributes"]["QueueArn"]
+            if any(int(dlq_attrs.get(name, 0)) > 0 for name in (
+                "ApproximateNumberOfMessages", "ApproximateNumberOfMessagesNotVisible", "ApproximateNumberOfMessagesDelayed",
+            )):
+                raise RuntimeError("The DLQ already contains messages; review them before this synthetic drill.")
 
-            a0 = int(sqs.get_queue_attributes(QueueUrl=dlq_url, AttributeNames=["ApproximateNumberOfMessages"])["Attributes"]["ApproximateNumberOfMessages"])
-            log_cb(f"🔍 [Baseline] Current DLQ depth: {a0}")
+            def task_key(task):
+                return (task.get("StartedTimestamp"), task.get("SourceArn"), task.get("DestinationArn"))
 
-            poison_id = str(uuid.uuid4())
-            log_cb(f"☠️ [Step 1/3] Quarantining order payload into DLQ (ID: {poison_id[:8]}...)...")
+            baseline_tasks = sqs.list_message_move_tasks(SourceArn=dlq_arn, MaxResults=10).get("Results", [])
+            if any(task.get("Status") in ("RUNNING", "CANCELLING") for task in baseline_tasks):
+                raise RuntimeError("A redrive task is already active; wait for it to finish.")
+            unrelated_keys = {task_key(task) for task in baseline_tasks}
+            checkout_id = str(uuid.uuid4())
+            drill_start_ms = int(time.time() * 1000)
+            log_cb(f"📦 [Step 1/3] Sending one synthetic valid message directly to the DLQ: {checkout_id}.")
+            log_cb("   This tests redrive and worker processing, not retry exhaustion or an API checkout.")
             sqs.send_message(
                 QueueUrl=dlq_url,
                 MessageBody=json.dumps({
                     "schema_version": 1,
-                    "checkout_id": poison_id,
-                    "user_sub": "simulated-dlq-user",
-                    "email": "shopper@example.com",
-                    "items": [{"sku": "BTM-002-S", "qty": 1}],
+                    "checkout_id": checkout_id,
+                    "user_sub": "synthetic-dlq-user",
+                    "email": email,
+                    "items": [{"sku": "BAG-001", "qty": 1}],
                     "requested_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 }),
             )
             time.sleep(6)
-            log_cb(f"   ✅ Quarantined payload {poison_id[:8]}... in DLQ storage (safely isolated from consumer workers)")
 
-            drill_start_ms = int(time.time() * 1000)
-            log_cb(f"♻️ [Step 2/3] Initiating SQS Redrive task from DLQ to Main Queue...")
-            try:
-                move_res = sqs.start_message_move_task(SourceArn=dlq_arn, DestinationArn=src_arn)
-                task_handle = move_res.get("TaskHandle", "Active")
-                log_cb(f"   Redrive task dispatched via AWS SQS API: {task_handle[:24]}...")
-            except Exception as me:
-                log_cb(f"   Redrive task notice: {me}")
-
-            log_cb("⏳ [Step 3/3] Observing DLQ drain and redelivery to main consumer...")
-            moved_count = 0
-            for poll_idx in range(12):
-                time.sleep(2)
-                tasks = sqs.list_message_move_tasks(SourceArn=dlq_arn).get("Results", [])
-                matching_task = None
-                for t in tasks:
-                    if t.get("StartedTimestamp", 0) >= drill_start_ms - 4000:
-                        matching_task = t
+            log_cb("♻️ [Step 2/3] Starting redrive and waiting up to 120s for its completion...")
+            start_before = int(time.time() * 1000)
+            move_res = sqs.start_message_move_task(SourceArn=dlq_arn, DestinationArn=src_arn)
+            start_after = int(time.time() * 1000)
+            task_handle = move_res.get("TaskHandle")
+            if not task_handle:
+                raise RuntimeError("SQS did not return a redrive task handle.")
+            bound_task = None
+            deadline = time.monotonic() + 120
+            while time.monotonic() < deadline:
+                tasks = sqs.list_message_move_tasks(SourceArn=dlq_arn, MaxResults=10).get("Results", [])
+                unrelated_keys.update(task_key(task) for task in tasks if task.get("TaskHandle") not in (None, task_handle))
+                matches = [task for task in tasks if (
+                    task.get("TaskHandle") == task_handle
+                    and task.get("SourceArn") == dlq_arn and task.get("DestinationArn") == src_arn
+                )]
+                if not matches and bound_task is not None:
+                    matches = [task for task in tasks if task_key(task) == bound_task and task.get("TaskHandle") in (None, task_handle)]
+                if not matches and bound_task is None:
+                    # SQS omits TaskHandle once a task completes; bind a unique new task in this start window.
+                    matches = [task for task in tasks if (
+                        task_key(task) not in unrelated_keys
+                        and not task.get("TaskHandle")
+                        and task.get("SourceArn") == dlq_arn and task.get("DestinationArn") == src_arn
+                        and start_before <= task.get("StartedTimestamp", 0) <= start_after
+                    )]
+                if len(matches) > 1:
+                    raise RuntimeError("Multiple redrive tasks match this start window; completion is ambiguous.")
+                if matches:
+                    task = matches[0]
+                    bound_task = task_key(task)
+                    if task.get("Status") == "COMPLETED":
+                        log_cb("   ✅ This redrive task completed.")
                         break
-                if matching_task:
-                    status = matching_task.get("Status")
-                    moved_count = matching_task.get("ApproximateNumberOfMessagesMoved", 0)
-                    to_move = matching_task.get("ApproximateNumberOfMessagesToMove", 0)
-                    if status == "COMPLETED":
-                        if moved_count >= 1 or to_move >= 1:
-                            break
-                        try:
-                            time.sleep(2)
-                            sqs.start_message_move_task(SourceArn=dlq_arn, DestinationArn=src_arn)
-                        except Exception:
-                            pass
-
-            log_cb(f"   ✅ SQS Move Task finished: moved message(s) back to checkout queue.")
-
-            log_cb(f"👀 Verifying processing by worker Lambda (`{proc_fn}`)...")
-            confirmed = False
-            for _ in range(12):
+                    if task.get("Status") in ("FAILED", "CANCELLED", "CANCELLING"):
+                        raise RuntimeError(f"Redrive ended with {task.get('Status')}: {task.get('FailureReason', '')}")
                 time.sleep(2)
-                try:
-                    evs = logs.filter_log_events(
-                        logGroupName=f"/aws/lambda/{proc_fn}",
-                        startTime=drill_start_ms - 5000,
-                        limit=20,
-                    ).get("events", [])
-                    for e in evs:
-                        if poison_id in e.get("message", ""):
-                            log_cb(f"   ✅ CloudWatch Confirmed: Worker Lambda process-checkout processed order {poison_id[:8]}... (Status: CONFIRMED)")
-                            confirmed = True
-                            break
-                except Exception:
-                    pass
-                if confirmed:
-                    break
+            else:
+                raise RuntimeError("This redrive task did not complete within 120s.")
 
-            if not confirmed:
-                log_cb(f"   ℹ️ Order {poison_id[:8]}... queued in primary checkout-requests for worker execution.")
-
-            log_cb("🎉 SUCCESS: DLQ Redrive executed successfully! Quarantined ➔ Redriven ➔ Confirmed without data loss.")
-            return True
+            log_cb(f"👀 [Step 3/3] Waiting up to 180s for worker confirmation of {checkout_id}...")
+            deadline = time.monotonic() + 180
+            while time.monotonic() < deadline:
+                pages = logs.get_paginator("filter_log_events").paginate(
+                    logGroupName=f"/aws/lambda/{proc_fn}", startTime=drill_start_ms - 5000,
+                    filterPattern=f'"{checkout_id}"',
+                )
+                for page in pages:
+                    for event in page.get("events", []):
+                        message = event.get("message", "")
+                        json_start = message.find("{")
+                        if json_start < 0:
+                            continue
+                        try:
+                            record = json.loads(message[json_start:])
+                        except ValueError:
+                            continue
+                        if record.get("event") != "checkout_processed" or record.get("checkout_id") != checkout_id:
+                            continue
+                        if record.get("status") == "CONFIRMED":
+                            log_cb(f"🎉 SUCCESS: Redrive completed and synthetic checkout {checkout_id} was CONFIRMED by the worker.")
+                            return True
+                        if record.get("status") == "REJECTED":
+                            raise RuntimeError(f"Synthetic checkout was REJECTED: {record.get('reason')}.")
+                time.sleep(5)
+            raise RuntimeError("No matching CONFIRMED worker record arrived within 180s; recovery is unverified.")
 
         except Exception as e:
             log_cb(f"❌ Exception during DLQ drill: {e}")
