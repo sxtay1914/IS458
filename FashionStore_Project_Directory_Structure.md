@@ -1,28 +1,29 @@
 # FashionStore — Project Directory Structure
 
-Updated 2026-11-08 from all 13 pages of [FashionStore repository guide.pdf](<FashionStore repository guide.pdf>) and checked against the current local files. This replaces the original proposed tree with the implemented layout. The PDF is a dated reference; this document and the [repository guide](fashionstore/docs/repository-guide.md) record corrections and current repository context.
+Updated 2026-11-10 from all 13 pages of [FashionStore repository guide.pdf](<FashionStore repository guide.pdf>) and checked against the current local files. This replaces the original proposed tree with the implemented layout. The PDF is a dated reference; this document and the [repository guide](fashionstore/docs/repository-guide.md) record corrections and current repository context.
 
 The Git repository is [sxtay1914/IS458](https://github.com/sxtay1914/IS458). The application lives in its `fashionstore/` subdirectory. Paths below are relative to that application directory unless stated otherwise. Run all `make` commands from `fashionstore/` (or use `make -C fashionstore ...` from the repository root).
 
-Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. The complete demo was restarted with the supplied UI/images, tested and torn down on 2026-11-07. The website is removed. The original five-day runtime and leave-running-for-review instructions are superseded. Part A production architecture is documentation only.
+Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. The November 10 [storefront](https://d33zy72vrkzz7v.cloudfront.net) and [local dashboard](http://localhost:8501) are running for owner testing. Leave them running at handoff and remind the owner to tear down afterwards; there is no automatic shutdown or five-day runtime. Part A production architecture is documentation only.
 
 ## Technology and recorded status
 
-| Area | Implemented choice | Recorded verification through 2026-11-08 |
+| Area | Implemented choice | Recorded verification through 2026-11-10 |
 | --- | --- | --- |
 | Storefront | React 19, TypeScript, Vite, self-hosted Nunito; supplied UI integrated | 21 unit tests, typecheck and production build passed |
-| Store API | Spring Boot 3.5, Java 21; EKS | 27 MySQL 8.4 integration tests passed after the local cart fix; prior amd64 build was deployed |
+| Store API | Spring Boot 3.5, Java 21; EKS | 27 local MySQL 8.4 tests passed; deployed image `demo-20261109-49cc9e8` includes the cart fix |
 | Functions | Four Python 3.12 arm64 Lambdas | 57 pytest tests against local MySQL 8.4; live checkout and report processing passed |
 | Database | RDS MySQL 8.4; Flyway canonical SQL migrations | V001–V003 migrated on RDS with verified TLS; demo inventory seeded |
 | Infrastructure | Terraform; ten service modules plus private-bucket helper | 33 mock-provider test runs; AWS demo applied with two Free-plan-eligible t3.small workers |
-| Workloads | Kubernetes, Kustomize and Helm | Two v1 pods and one v2 pod became ready; app and three add-ons subsequently removed for teardown |
-| Browser tests | Playwright | Four mock journeys passed; restarted demo: two passed, one failed on a cart database deadlock, one intentionally skipped |
-| Live API checks | pytest | Restarted demo: 31 passed, four optional chaos/slow tests skipped |
-| Reporting | Lambda, S3 and Athena | Sales and stock CSVs generated; daily revenue query succeeded |
+| Workloads | Kubernetes, Kustomize and Helm | Two Ready EKS workers; API workloads/add-ons deployed; V001–V003 and seed Jobs completed |
+| Browser tests | Playwright | November 10: three live passes, including corrected purchase; one fault-injection skip |
+| Live API checks | pytest | November 10: 31 passes/four optional skips; seven private-access checks passed |
+| Local dashboard | Streamlit, boto3, k6/pytest controls | 112 offline passes; both tabs rendered without errors; no live dashboard drills at handoff |
+| Reporting | Lambda, S3 and Athena | First-demo sales/stock CSV and daily revenue evidence retained; not rerun at this handoff |
 
-The supplied UI was deployed with its checkout retry fix preserved. All nine supplied image URLs returned HTTP 200 and matched their source hashes; ten product images loaded with no mobile horizontal overflow. [Restart evidence](fashionstore/docs/report/evidence/2026-11-07-restart/results.json) records that deployment's checks and failed browser purchase; [first-demo evidence](fashionstore/docs/report/evidence/2026-11-06/results.json) remains historical. The cart deadlock was fixed and retested locally on 2026-11-08: [fix evidence](fashionstore/docs/report/evidence/2026-11-08-cart-deadlock/results.json) records the failing baseline and 27 passing API tests. Post-fix AWS/browser testing remains pending, so the successful-release `v0.1.0` tag is withheld. [Teardown verification](fashionstore/docs/report/evidence/2026-11-07-restart/teardown.json) confirms empty demo Terraform state and 23 checks with zero remaining resources or errors. The budget/state/GitHub OIDC bootstrap is retained.
+The [current restart evidence](fashionstore/docs/report/evidence/2026-11-10-restart/results.json) records successful live API/browser checks and a final Terraform plan with no changes. Verified demo release: [`v0.1.0`](https://github.com/sxtay1914/IS458/tree/v0.1.0). The [November 7 browser failure](fashionstore/docs/report/evidence/2026-11-07-restart/results.json), [teardown](fashionstore/docs/report/evidence/2026-11-07-restart/teardown.json) and [November 8 local cart fix](fashionstore/docs/report/evidence/2026-11-08-cart-deadlock/results.json) remain dated historical evidence. The budget/state/GitHub OIDC bootstrap remains active alongside the new demo.
 
-Separate non-demo resources remain: three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP. The volumes and Elastic IP can still incur charges; demo cleanup does not establish zero account spending.
+The November 7 inventory recorded three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP outside the demo; it is not a fresh inventory. The preflight billing snapshot for November 1–9 showed about US$6.30 usage offset by credits, not a verified remaining-credit balance or final demo cost.
 
 ## Repository boundary
 
@@ -193,6 +194,14 @@ This lists the current source/configuration files, including local uncommitted f
     │   │   └── checkout-request.json
     │   ├── README.md
     │   └── openapi.yaml
+    ├── dashboard/
+    │   ├── README.md
+    │   ├── animations.py
+    │   ├── app.py
+    │   ├── controller.py
+    │   ├── requirements.txt
+    │   ├── test_controller.py
+    │   └── test_dispatch_cleanup.py
     ├── database/
     │   ├── migrations/
     │   │   ├── V001__catalog_and_cart.sql
@@ -218,9 +227,12 @@ This lists the current source/configuration files, including local uncommitted f
     │   │       │   ├── mobile.png
     │   │       │   ├── results.json
     │   │       │   └── teardown.json
-    │   │       └── 2026-11-08-cart-deadlock/
+    │   │       ├── 2026-11-08-cart-deadlock/
+    │   │       │   └── results.json
+    │   │       └── 2026-11-10-restart/
     │   │           └── results.json
     │   ├── implementation-plan.md
+    │   ├── presentation-content-structure.md
     │   └── repository-guide.md
     ├── functions/
     │   ├── common/
@@ -450,6 +462,7 @@ This lists the current source/configuration files, including local uncommitted f
     │   │   │   └── common.js
     │   │   ├── profiles/
     │   │   │   ├── demo.json
+    │   │   │   ├── fast-demo.json
     │   │   │   └── smoke.json
     │   │   ├── .gitignore
     │   │   ├── browse.js
@@ -482,11 +495,12 @@ This lists the current source/configuration files, including local uncommitted f
 | `functions/common` | Shared MySQL/Secrets Manager connection handling and test database setup; copied into Lambda packages |
 | `contracts` | OpenAPI, versioned SQS/SNS JSON schemas and example messages |
 | `database` | Flyway migration history, synthetic seeds and evidence SQL; migration and seed Jobs reach isolated RDS through EKS |
+| `dashboard` | Local Streamlit telemetry and drill controller; mock-based tests and live-test prerequisites are documented in its README |
 | `infra/terraform` | AWS resources, IAM and service bindings; persistent bootstrap state separate from disposable demo state |
 | `platform` | Versioned Kubernetes deployments, services, TargetGroupBindings, HPA/disruption budget, database Jobs and Helm values |
 | `scripts` | Six implemented packaging, configuration, image, storefront and test-user helpers; Makefile supplies deployment orchestration |
 | `tests` | Browser, live security/correctness/recovery, infrastructure and k6 checks; unit/component tests stay beside their source |
-| `docs` | Repository guide, implementation plan and deployment screenshots/results; full report and runbook remain future work |
+| `docs` | Repository guide, implementation plan, presentation outline and dated deployment screenshots/results |
 
 ### AWS-to-directory mapping
 
@@ -531,13 +545,14 @@ This lists the current source/configuration files, including local uncommitted f
 | Live security, correctness and recovery | `tests/security`, `correctness`, `failure` | `make live-test` with configured test users/tokens |
 | Live browser journeys | `tests/e2e` | `make e2e-live` |
 | Infrastructure | `tests/infrastructure` | `make smoke`, `make verify-private` |
+| Local test dashboard | `dashboard` | `make dashboard`; offline test command in [dashboard README](fashionstore/dashboard/README.md) |
 | Load/flash sale | `tests/load` | `make load-browse load-checkout load-flash PROFILE=smoke` |
 
 `make help` is the command index; `make test` runs the offline suites. Install the required tools/dependencies and start/migrate local MySQL first; see [tests/README.md](fashionstore/tests/README.md). Live pytest skips without `FS_BASE_URL`; chaos and slow checks additionally require `FS_ALLOW_CHAOS=1` and `FS_RUN_SLOW=1`. Run disruptive tests one at a time. Reseed `FLASH-001` before each flash-sale run.
 
 ## Deployment sequence and remaining work
 
-The Makefile and six scripts exist; these commands were exercised during the first AWS demo and the restart with the supplied UI/images. Restart testing and verified demo teardown are complete. The cart fix passed local regression tests; the failed purchase journey still needs a post-fix live browser run.
+The Makefile and six scripts exist and were exercised during deployment. The November 10 restart passed the live API/browser checks, including the corrected cart purchase, and remains running for owner testing. Dashboard chaos/load demonstrations remain unrun at this handoff.
 
 1. From the repository root, `cd fashionstore`. Configure bootstrap for `github_repository = "sxtay1914/IS458"`, alert recipients and the intended AWS account/region. Run `make bootstrap`; preserve its local state securely outside Git. Set GitHub repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET` from the bootstrap outputs.
 2. Copy/fill `backend.hcl` and `terraform.tfvars` in `infra/terraform/environments/demo` using their examples. Set owner, expiry, SES addresses, EKS admin ARNs and allowed public endpoint CIDRs. Run `make init-demo deploy-demo`; the plan target packages the Lambdas first.
@@ -546,11 +561,11 @@ The Makefile and six scripts exist; these commands were exercised during the fir
 5. Run `make deploy-storefront verify-private`. If the VPC origin fails, investigate the documented CloudFront service-managed security-group input before proceeding.
 6. Create verified test shoppers with `make test-users`, configure the `FS_*`/`E2E_*` variables in the test README and run `make live-test e2e-live`. Hosted-UI PKCE automation passed during the first demo.
 7. Run bounded chaos, load and pilot-weight demonstrations, manually invoke the report with `{"date":"today"}`, run Athena queries and collect evidence and billing data.
-8. After testing, export evidence and follow the plan's staged manual teardown checklist, retaining Lambda execution permissions until its ENIs are released. `make destroy-demo` removes bindings, uninstalls add-ons and runs one full Terraform destroy; it does not implement the staged sequence. Check residual resources and charges; retain bootstrap only while its state is still needed, then remove it last. RDS uses no final snapshot: export any needed data first.
+8. Leave the current demo running for owner testing, then remind the owner to export evidence and follow the staged teardown checklist. Retain Lambda execution permissions until its ENIs are released. `make destroy-demo` removes bindings, uninstalls add-ons and runs one full Terraform destroy; it does not implement staging. Check residual resources and charges; retain bootstrap while its state is needed. RDS uses no final snapshot: export needed data first.
 
 ### CI in the current monorepo
 
-Workflow definitions are at the Git repository root's `.github/workflows/`, where GitHub discovers them after they are pushed. Shell steps default to `fashionstore/`; explicit working directories, dependency caches and artifact paths use repository-relative paths. The Terraform plan workflow watches the application infrastructure/functions, packaging script, Makefile and its own workflow file. It requires `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`; GitHub CI passed all six jobs on the pushed UI/image build.
+Workflow definitions are at the Git repository root's `.github/workflows/`, where GitHub discovers them after they are pushed. Shell steps default to `fashionstore/`; explicit working directories, dependency caches and artifact paths use repository-relative paths. The Terraform plan workflow watches the application infrastructure/functions, packaging script, Makefile and its own workflow file. It requires `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`; earlier builds passed six CI jobs, while new-commit CI results are not yet recorded here.
 
 The CI definition checks/builds; it does not push ECR images or deploy Kubernetes. The plan definition runs a Terraform plan when configured; it does not post a PR comment. Bootstrap creates an apply role, but no CD workflow is implemented. Deployments currently use manual `make` commands.
 

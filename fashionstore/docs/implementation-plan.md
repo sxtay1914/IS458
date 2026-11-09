@@ -4,17 +4,21 @@ Scope: the Part B implementation architecture only, in AWS `ap-southeast-1`, bui
 
 See the [current directory structure](../../FashionStore_Project_Directory_Structure.md) and [repository guide](repository-guide.md) for implemented paths and remaining gaps. Commands run from `fashionstore/` inside `sxtay1914/IS458`.
 
-## Build status (2026-11-08)
+## Build status (2026-11-10)
+
+The complete demo is running for owner testing at [the storefront](https://d33zy72vrkzz7v.cloudfront.net), with the [local dashboard](http://localhost:8501) alongside it. [Current evidence](report/evidence/2026-11-10-restart/results.json) records 31 live API passes/four skips, three live browser passes/one skip, seven private-access checks, 112 offline dashboard passes and two dashboard tabs rendered without errors. The previously failing cart purchase now passes live. Dashboard chaos and sustained load drills were not run at handoff. Verified demo release: [`v0.1.0`](https://github.com/sxtay1914/IS458/tree/v0.1.0).
+
+Two EKS workers are Ready, image `demo-20261109-49cc9e8` is deployed, V001–V003 and seed Jobs completed, and SES sender/operator SNS verification is complete. Terraform's final plan reports no changes. The unsupported CloudFront default-certificate override was removed from configuration without needing a live resource update. Keep this session running for owner testing and remind the owner to use the staged teardown afterwards; there is no automatic destroy. See the [dashboard guide](../dashboard/README.md) and [presentation outline](presentation-content-structure.md).
 
 The first AWS demo passed 31 live API tests and three live browser journeys; four optional API chaos/slow tests and one browser fault-injection journey were skipped. Local checks passed: 33 Terraform mock-provider test runs, 57 Lambda tests against MySQL 8.4, 24 API integration tests, 21 storefront tests, typecheck/build and four mocked browser journeys. The API Docker image was built for amd64 and deployed. Flyway V001–V003 migrated RDS with verified TLS, and reporting through Lambda/S3/Athena passed. Sanitized results and screenshots are in `docs/report/evidence/2026-11-06/`. CD, load drills and the full submission report remain outstanding.
 
 The restarted demo with the supplied UI and illustrations passed 31 live API tests, with four optional tests skipped. Its final browser run passed two journeys, failed one on a cart database deadlock and intentionally skipped one. All nine image URLs returned HTTP 200 and matched the source files; ten catalogue images loaded with no mobile horizontal overflow. These historical results are preserved in [restart evidence](report/evidence/2026-11-07-restart/results.json).
 
-On 2026-11-08, the cart deadlock was reproduced locally against MySQL 8.4 and fixed by using `READ_COMMITTED` only for `CartRepository.replace`. The baseline regression suite had one failure and two passes; after the change, all 27 API tests passed, including concurrent empty-cart fills, rollback on an invalid item and complete same-shopper replacements. See [fix evidence](report/evidence/2026-11-08-cart-deadlock/results.json). Post-fix AWS/browser testing remains pending, so the successful-release `v0.1.0` tag is withheld.
+On 2026-11-08, the cart deadlock was reproduced locally against MySQL 8.4 and fixed by using `READ_COMMITTED` only for `CartRepository.replace`. The baseline regression suite had one failure and two passes; after the change, all 27 API tests passed, including concurrent empty-cart fills, rollback on an invalid item and complete same-shopper replacements. See [fix evidence](report/evidence/2026-11-08-cart-deadlock/results.json). The November 10 live browser run now verifies the corrected purchase flow.
 
-The demo was torn down after testing on 2026-11-07 and the website is removed. [Teardown verification](report/evidence/2026-11-07-restart/teardown.json) records empty Terraform state, confirmed twice, and 23 resource checks with zero remaining resources or errors. Staged Terraform applies removed 25, 38 and finally 78 resources; temporary operator credentials and leftover RDS logs were also removed. Bootstrap state, GitHub OIDC roles and the US$100 alert budget remain. Notifications are not a spending cap. The original five-day runtime and leave-running-for-review instructions are superseded.
+The previous demo was torn down on 2026-11-07. Its historical [teardown verification](report/evidence/2026-11-07-restart/teardown.json) records empty Terraform state and 23 checks with zero remaining resources or errors. Bootstrap state, GitHub OIDC roles and the US$100 alert budget were retained for the current restart. Budget notifications are not a spending cap. The current instruction is to leave the November 10 session running for owner testing.
 
-Separate non-demo resources remain: three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP. The volumes and Elastic IP may continue to incur charges.
+The November 7 inventory recorded three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP outside the demo; no fresh account-wide inventory is claimed here. The preflight billing snapshot for November 1–9 showed about US$6.30 usage offset by credits. It is delayed data and does not establish the remaining credit balance or final restart cost.
 
 Change from the original plan: Cognito `USER_PASSWORD_AUTH` was removed. Its access tokens carry only `aws.cognito.signin.user.admin`, never the `fashionstore-api/*` scopes the API requires, so scripted tests sign in through the hosted UI with PKCE instead (`tests/e2e/tools/get-token.mjs`).
 
@@ -35,7 +39,7 @@ Change from the original plan: Cognito `USER_PASSWORD_AUTH` was removed. Its acc
 | D11 | Bootstrap creates OIDC plan and apply roles; the written plan workflow uses the PR role. Manual `make` deployment is current; no CD/apply workflow is implemented. No long-lived CI keys | n/a |
 | D12 | Budget alerts at 50% and 80% of $100 (actual) plus 100% forecast, in the bootstrap stack so they survive teardown | n/a |
 | D13 | SQS caps checkout workers at 5 to protect the db.t4g.micro; reservation is disabled for this account's concurrency quota of 10 | Already in slides |
-| D14 | Deploy only for the demo; save test evidence and manually destroy after testing | n/a |
+| D14 | Leave the current demo running for owner testing; remind the owner and manually destroy afterwards | n/a |
 | D15 | UC4 wording becomes "deduplicated email attempts per checkout, with possible duplicate delivery if SES accepts mail before SENT is persisted; attempts are logged" | "exactly one email" |
 
 Change slides 15, 19 and 20 to match D1 to D3 and D15 before you submit.
@@ -65,7 +69,7 @@ Sync points: end of Phase 0 (contracts frozen, `make validate` and the local tes
 
 ## Before the demo (Phase 0)
 
-Finish offline work before provisioning the demo. Collect integration and evidence results during the demo session, then destroy the disposable stack after testing.
+Finish offline work before provisioning the demo. Collect integration evidence, hand the running session to the owner for testing, then remind them to tear down afterwards.
 
 | Work | Owner | Exit criterion |
 | --- | --- | --- |
@@ -80,7 +84,7 @@ Finish offline work before provisioning the demo. Collect integration and eviden
 
 ## Demo sequence (no five-day runtime)
 
-The original five-day cost estimate is superseded. Review current prices before a demo apply, keep the runtime short, export evidence and manually destroy after testing. US$100 budget alerts do not enforce a spending cap.
+The original five-day cost estimate is superseded. Keep the runtime short, export evidence and manually destroy when the owner finishes testing. US$100 budget alerts do not enforce a spending cap.
 
 ### Foundation and data (Phases 1 and 2a)
 
@@ -111,7 +115,7 @@ Exit, with evidence saved to `evidence/`: `make smoke`, then `make load-flash` (
 | Add-ons (Helm) | metrics-server, Cluster Autoscaler (IRSA), AWS Load Balancer Controller (IRSA) used **only** for `TargetGroupBinding` |
 | `delivery` (ALB half) | Internal ALB in the private subnets, two IP target groups `v1`/`v2`, listener rule `/api/*` with weights 90/10 |
 | Workloads | `deployment-v1` ×2, `deployment-v2` ×1, HPA on v1, IRSA role for SQS send and secret read, the reconciler on a `@Scheduled` loop with SKIP LOCKED |
-| CI / deployment | Written CI builds/tests the image; manual `make push-api` and `make k8s-apply` push/deploy. Root-level workflows use monorepo paths; GitHub CI passed all six jobs |
+| CI / deployment | Written CI builds/tests the image; manual `make push-api` and `make k8s-apply` push/deploy. Earlier builds passed six CI jobs; new-commit CI results are not yet recorded here |
 
 Exit: an in-cluster curl to the ALB hits both versions in about a 90/10 split over 1,000 requests, and a checkout via the API reaches CONFIRMED.
 
@@ -140,7 +144,7 @@ Exit: `tests/failure/test_notification_recovery.py` (chaos) and `database/querie
 1. k6 `smoke`, then `demo` profiles for browse, checkout and flash-sale. Capture p95 latency, HPA and CA scaling events, and SQS age-of-oldest-message.
 2. Failure drills: kill a store-api pod, force payment failures into the DLQ and redrive them, and break SNS publish to show the reconciler recovering.
 3. Export the evidence: screenshots, k6 summaries, CloudWatch graphs, Cost Explorer for the window, and `terraform state list`.
-4. Follow the staged teardown checklist below, then check that no demo ENIs, EIPs, load balancers or snapshots are left. Keep `bootstrap` only while its state is still needed, then remove it last.
+4. After the owner finishes testing, follow the staged teardown checklist below and check for residual demo resources. Keep `bootstrap` while its state is still needed, then remove it last.
 
 ## Teardown rules (manual destroy)
 
@@ -154,7 +158,7 @@ The stack is destroyed by hand. Do it in this order, or `terraform destroy` stal
 6. Verify the demo Terraform state is empty and no demo EC2 workers, load balancers, NAT gateways, Elastic IPs, ENIs, RDS instances/snapshots, CloudFront distribution/VPC origin or Lambda functions remain. Remove demo resources outside Terraform, including temporary operator credentials and leftover RDS log groups. If a CloudFront service security group remains orphaned, remove it only after verifying its VPC origin is absent and no ENIs use it. Retained bootstrap and unrelated account resources must be reported separately.
 7. Once no further deployments or grading need the state, back it up, empty the state bucket and destroy bootstrap last. Budget alerts remain in bootstrap during demo cleanup.
 
-Before a future deployment, configure a valid EKS admin principal, refresh the allowed IP and expiry date, reverify the recreated SES identity and discover the new CloudFront service security group. The deleted temporary principal and old CloudFront group were cleared from the ignored private demo inputs; private configuration is not committed.
+Before each future deployment, configure a valid EKS admin principal, refresh the allowed IP and expiry date, reverify the recreated SES identity and discover the new CloudFront service security group. Refresh the ignored private demo inputs for that deployment; private configuration is not committed.
 
 ## Risks to watch
 

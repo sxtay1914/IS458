@@ -1,9 +1,9 @@
 # Repository guide
 
 What every folder and file is for, what is finished, and what is left.
-Status as of 2026-11-08. "A" is the platform builder, "B" is the data and app builder.
+Status as of 2026-11-10. "A" is the platform builder, "B" is the data and app builder.
 
-Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree and corrections are in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths here are relative to `fashionstore/`, and commands run there. Local verification includes 27 API integration tests, 57 Lambda tests, 21 storefront unit tests and four mocked browser journeys. The restarted demo passed 31 live API tests, with four optional tests skipped. Its final browser run passed two journeys, failed one on a cart database deadlock and intentionally skipped one. All nine supplied image files passed HTTP/hash checks; ten product images loaded with no mobile horizontal overflow. [Restart evidence](report/evidence/2026-11-07-restart/results.json) records these results; [first-demo evidence](report/evidence/2026-11-06/results.json) is historical. The demo was torn down on 2026-11-07 and the website is removed. The cart issue was fixed and retested locally on 2026-11-08; [fix evidence](report/evidence/2026-11-08-cart-deadlock/results.json) records the failing baseline and passing regression tests. Post-fix AWS/browser testing remains pending and the successful-release `v0.1.0` tag is withheld.
+Based on the [13-page PDF](<../../FashionStore repository guide.pdf>); the checked current tree is in [Project Directory Structure](../../FashionStore_Project_Directory_Structure.md). The Git root is `IS458/`; application paths and commands here are relative to `fashionstore/`. The November 10 [storefront](https://d33zy72vrkzz7v.cloudfront.net) and [local dashboard](http://localhost:8501) are running for owner testing. [Current evidence](report/evidence/2026-11-10-restart/results.json) records 31 live API passes/four skips, three live browser passes/one skip, seven private-access checks, 112 offline dashboard passes and two error-free dashboard tab renders. The previously failing cart purchase now passes live. Verified demo release: [`v0.1.0`](https://github.com/sxtay1914/IS458/tree/v0.1.0). The [November 7 failure](report/evidence/2026-11-07-restart/results.json), [teardown](report/evidence/2026-11-07-restart/teardown.json) and [November 8 local fix](report/evidence/2026-11-08-cart-deadlock/results.json) remain historical evidence.
 
 ## How the pieces fit
 
@@ -34,20 +34,25 @@ reads checkout status from MySQL; SNS does not push status into the API.
 | File | What it does |
 | --- | --- |
 | `README.md` | Front page: status table, offline test commands, the deploy runbook |
-| `Makefile` | Every command the team runs. `make help` lists them. Offline: `test`, `tf-test`, `py-test`, `api-test`, `web-test`, `e2e`. AWS: `bootstrap`, `deploy-demo`, `k8s-config`, `addons`, `db-migrate-remote`, `push-api`, `k8s-apply`, `deploy-storefront`, `smoke`, `verify-private`, `live-test`, `e2e-live`, `load-*`, `destroy-demo` |
+| `Makefile` | Every command the team runs. `make help` lists them. Offline: `test`, `tf-test`, `py-test`, `api-test`, `web-test`, `e2e`. AWS: `bootstrap`, `deploy-demo`, `k8s-config`, `addons`, `db-migrate-remote`, `push-api`, `k8s-apply`, `deploy-storefront`, `smoke`, `verify-private`, `live-test`, `e2e-live`, `load-*`, `destroy-demo`. `dashboard` starts the local Streamlit controller |
 | `.gitignore` | Keeps Terraform state, `terraform.tfvars`, `backend.hcl`, build output, `node_modules` and generated env files out of git |
 | `../.github/workflows/ci.yml` (Git root) | On every PR: Terraform fmt/validate/test, Lambda pytest on a MySQL service, Kustomize render, store-api tests + Docker build, storefront tests + build, Playwright e2e, k6 script parse |
 | `../.github/workflows/terraform-plan.yml` (Git root) | On PRs touching application infrastructure/functions or plan tooling: assumes the read-only GitHub OIDC role and runs `terraform plan` (no PR comment) |
 
-The workflow files are at the Git root under `.github/workflows/`, with shell steps running from `fashionstore/` and action input paths relative to the Git root. They are pushed, and GitHub CI passed all six jobs. The AWS plan job requires repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`. There is no CD workflow.
+The workflow files are at the Git root under `.github/workflows/`, with shell steps running from `fashionstore/` and action input paths relative to the Git root. Earlier builds passed all six CI jobs; new-commit CI results are not yet recorded here. The AWS plan job requires repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET`. There is no CD workflow.
 
 ## docs/
 
 | File | What it does |
 | --- | --- |
-| `implementation-plan.md` | Locked decisions, who does what, the phased demo sequence with exit criteria and staged manual teardown after testing, risks |
+| `implementation-plan.md` | Locked decisions, phased demo sequence and staged manual teardown after owner testing, risks |
 | `repository-guide.md` | This file |
-| `report/evidence/` | Historical first-demo results and screenshots, restarted-demo results including the failed browser purchase, and final teardown verification |
+| `presentation-content-structure.md` | Slide outline combining use cases, architecture demos, monitoring, six pillars and lessons |
+| `report/evidence/` | Dated deployment, cart-fix and teardown records; November 10 is the current running demo |
+
+## dashboard/ — local test controller
+
+See [dashboard/README.md](../dashboard/README.md) for `make dashboard` and test-user prerequisites. `app.py` and `animations.py` render the Streamlit UI; `controller.py` handles telemetry and drill subprocesses; `test_controller.py` and `test_dispatch_cleanup.py` test these paths with mocks. `requirements.txt` lists dependencies. The dashboard runs at `http://localhost:8501`, separately from the hosted storefront. Both tabs rendered without errors and 112 offline tests passed; dashboard chaos and sustained load drills were not run at handoff.
 
 ## contracts/ — the agreement between the two halves
 
@@ -222,34 +227,35 @@ The workflow files are at the Git root under `.github/workflows/`, with shell st
 | Terraform: bootstrap, 10 service modules + bucket helper, demo stack | 33 `terraform test` runs green against a mocked provider; `fmt` and `validate` clean |
 | Database schema and seeds | Flyway V001–V003 migrated RDS MySQL 8.4 with certificate-verified TLS |
 | Four Lambdas | 57 pytest tests green on real MySQL 8.4, including the oversell race and duplicate delivery |
-| store-api | 27 integration tests passed on Testcontainers MySQL 8.4 after the local cart fix; baseline reproduced the deadlock; post-fix AWS/browser retest pending |
+| store-api | 27 local MySQL 8.4 integration tests passed; image `demo-20261109-49cc9e8` deployed and corrected purchase passed live |
 | storefront | 21 unit tests, typecheck and production build green |
-| Browser journeys | 4 mocked journeys passed; restarted demo: 2 passed, 1 cart-deadlock failure, 1 intentionally skipped. First demo had 3 live passes |
-| Live tests and load scripts | Restarted demo: 31 live API tests passed; 4 optional chaos/slow tests skipped. k6 load runs remain outstanding |
-| Kubernetes, Helm, deploy scripts, CI | Kubernetes workloads and three Helm add-ons deployed successfully; GitHub CI passed all six jobs |
+| Browser journeys | November 10: 3 live passes, 1 fault-injection skip; earlier failed run retained as historical evidence |
+| Live tests and load scripts | November 10: 31 live API passes/4 optional skips and 7 private-access passes; sustained load not run at handoff |
+| Dashboard | 112 offline tests passed; 2 tabs rendered without errors; no live dashboard drills executed |
+| Kubernetes, Helm, deploy scripts | Two Ready workers, workloads/add-ons deployed, V001–V003 and seeds applied; final Terraform plan has no changes |
 
 ## What still needs to be done
 
-Demo teardown is complete: [verification evidence](report/evidence/2026-11-07-restart/teardown.json) records empty Terraform state and 23 checks with zero remaining resources or errors. Bootstrap state, GitHub OIDC roles and budget alerts are retained. The cart fix passed local tests; deploy it and rerun the failed purchase journey before issuing the successful-release tag. The original five-day runtime and leave-running-for-review instructions are superseded. Workflow definitions are pushed and the previous deployed build passed all six CI jobs.
+Keep the current AWS demo and local dashboard running for the owner's tests, then remind the owner to use the staged teardown runbook. There is no automatic shutdown. Demo release `v0.1.0` passed the recorded checks. Dashboard chaos/load demonstrations and their evidence remain separate work; the handoff checks do not establish those results.
 
-The separate scan across 17 regions found no load balancers or nonterminated demo EC2 instances. Three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP remain outside the demo; storage and Elastic IP charges may continue. Redshift inventory was unavailable (`OptInRequired`), so this is not a claim that every account service was inspected.
+The historical November 7 scan across 17 regions found no load balancers or nonterminated demo EC2 instances after teardown. It recorded three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP outside the demo. It does not describe the current running stack. Redshift inventory was unavailable (`OptInRequired`). The November 1–9 preflight billing snapshot showed about US$6.30 usage offset by credits; remaining credits and final restart cost were not verified.
 
 | # | Step | Who | Notes |
 | --- | --- | --- | --- |
 | 1 | Use the existing `sxtay1914/IS458` repo; configure bootstrap `github_repository` accordingly. Set `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET` after step 2; push the root-level workflows and verify their first GitHub run | A | Repository, UI and supplied image updates are pushed |
 | 2 | Bootstrap completed; fill `environments/demo/terraform.tfvars` (owner, `expires_on`, SES sender and recipients, your IAM ARN in `eks_admin_principal_arns`, your IP in `eks_public_access_cidrs`) | A | |
-| 3 | `make init-demo deploy-demo` | A | First deployment and complete restart were applied; demo teardown completed 2026-11-07 |
+| 3 | `make init-demo deploy-demo` | A | November 10 restart applied; final Terraform plan reports no changes |
 | 4 | Click the SES verification emails for sender and recipients | B | Unverified recipients get no email in the sandbox |
 | 5 | `make k8s-config addons db-migrate-remote db-seed-remote`, then `make smoke` | A | |
 | 6 | `make push-api TAG=v1` and `TAG=v2`, then `make k8s-config V1_TAG=v1 V2_TAG=v2 k8s-apply` | B builds, A applies | amd64 image built, pushed as v1/v2 and rolled out successfully |
 | 7 | `make deploy-storefront verify-private` | B | If `/api/*` returns 502/504, add the CloudFront VPC-origin SG to `alb_extra_source_security_group_ids` |
-| 8 | `make test-users`, then `make live-test e2e-live` | B | Restart: 31 API passes/4 skips; browser 2 passes/1 cart-deadlock failure/1 skip. Hosted-UI callback timing fix verified |
+| 8 | `make test-users`, then `make live-test e2e-live` | B | November 10: 31 API passes/4 skips; browser 3 passes/1 skip, including corrected cart purchase |
 | 9 | Chaos and slow tests: `FS_ALLOW_CHAOS=1 FS_RUN_SLOW=1 make live-test`, one at a time | A + B | They change the stack and restore it |
 | 10 | Load: `make load-browse load-checkout load-flash PROFILE=smoke`, then `PROFILE=demo` | A + B | k6 has not been run here; reseed FLASH-001 before each flash sale |
 | 11 | Pilot: set weights 50/50, then 0/100 and back in tfvars, `terraform apply`, record the target-group metrics | A | |
 | 12 | Report: invoke `report` with `{"date": "today"}`, run the Athena named queries | B | |
-| 13 | Save evidence (screenshots, k6 summaries, CloudWatch graphs, Cost Explorer, `terraform state list`) | A + B | Available sanitized results/screenshots are under `docs/report/evidence/2026-11-06/` and `2026-11-07-restart/`; load/billing evidence remains outstanding |
-| 14 | After tests: staged teardown checklist in the plan, then check residual resources and charges | A | Completed; empty demo state and 23 checks with zero remaining resources/errors. Bootstrap and the separate non-demo resources above remain |
+| 13 | Save evidence (screenshots, k6 summaries, CloudWatch graphs, Cost Explorer, `terraform state list`) | A + B | Current handoff results: `docs/report/evidence/2026-11-10-restart/`; historical records remain dated separately |
+| 14 | After owner testing: staged teardown checklist in the plan, then check residual resources and charges | A | Pending owner testing; leave running at handoff and remind the owner to tear down |
 
 Gaps that are known and not built: no CD workflow (deploys are `make` commands run by hand), and
 the Kubernetes YAML has only been rendered and parsed, not schema-checked with kubeconform.
