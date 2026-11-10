@@ -1,5 +1,7 @@
 # Tests
 
+For the prepared 300-VU browsing presentation, use the [Mac watcher + CloudShell load commands](../docs/stress-demo.md). The `stress` profile is browse-only; it has not been run against the current rebuild.
+
 ## Offline (no AWS, run in CI)
 
 | What | Where | Command | Count |

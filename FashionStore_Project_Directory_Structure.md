@@ -234,7 +234,8 @@ This lists the current source/configuration files, including local uncommitted f
     │   │           └── results.json
     │   ├── implementation-plan.md
     │   ├── presentation-content-structure.md
-    │   └── repository-guide.md
+    │   ├── repository-guide.md
+    │   └── stress-demo.md
     ├── functions/
     │   ├── common/
     │   │   └── fashionstore_common/
@@ -464,7 +465,8 @@ This lists the current source/configuration files, including local uncommitted f
     │   │   ├── profiles/
     │   │   │   ├── demo.json
     │   │   │   ├── fast-demo.json
-    │   │   │   └── smoke.json
+    │   │   │   ├── smoke.json
+    │   │   │   └── stress.json
     │   │   ├── .gitignore
     │   │   ├── browse.js
     │   │   ├── checkout.js
