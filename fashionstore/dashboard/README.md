@@ -2,7 +2,7 @@
 
 An interactive **Streamlit** dashboard for IS458 (Cloud Management and Engineering). It serves as a visual control center alongside the **AWS CloudWatch Dashboard** to trigger load tests, execute chaos drills, and inspect real-time cloud telemetry.
 
-November 10 handoff: the [storefront](https://d33zy72vrkzz7v.cloudfront.net) and [local dashboard](http://localhost:8501) are running for owner testing. [Recorded checks](../docs/report/evidence/2026-11-10-restart/results.json): 112 offline dashboard tests passed and both tabs rendered without exceptions or browser errors. No dashboard chaos or sustained load drill was run live at handoff. Keep the session running for owner testing, then use the [staged teardown runbook](../docs/implementation-plan.md#teardown-rules-manual-destroy); there is no automatic teardown. The dashboard is local to this machine, separate from the AWS storefront.
+November 10 13:55 setup: [storefront](https://d1oj35ccg258u3.cloudfront.net) and [local dashboard](http://localhost:8501). The dashboard server was restarted; no browser checks, pytest, purchases, chaos or load drills were run for this rebuild, as requested. [Redeployment evidence](../docs/report/evidence/2026-11-10-restart/redeploy.json) records retained orders/stock and completed setup. The [earlier 00:37 results](../docs/report/evidence/2026-11-10-restart/results.json), including 112 offline passes/two tab renders, remain historical. Teardown is paused and services remain running; no automatic teardown is configured. The dashboard is local to this machine, separate from the AWS storefront.
 
 ---
 

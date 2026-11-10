@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-10",
+  "completed_at": "2026-11-10T13:55:51.735249+08:00",
+  "status": "deployed for owner use; functional tests skipped at owner request",
+  "storefront_url": "https://d1oj35ccg258u3.cloudfront.net",
+  "dashboard_url": "http://localhost:8501",
+  "cloudfront_distribution_id": "E2AE26I3DO2C32",
+  "context": "Owner reversed teardown after 25 Lambda/dependent resources and 38 compute/delivery resources were deleted. The final 79-resource destroy plan was not applied.",
+  "terraform": {
+    "resources_added": 63,
+    "resources_changed": 0,
+    "resources_destroyed": 0,
+    "database_replaced": false,
+    "vpc_replaced": false
+  },
+  "application": {
+    "api_image_tag": "demo-20261109-49cc9e8",
+    "api_v1_rollout": "complete",
+    "api_v2_rollout": "complete",
+    "eks_ready_nodes": 2,
+    "addons_available": [
+      "metrics-server",
+      "cluster-autoscaler",
+      "aws-load-balancer-controller"
+    ],
+    "storefront_build_and_s3_upload": "complete",
+    "dashboard_server": "started on 127.0.0.1:8501"
+  },
+  "preservation": {
+    "orders": "existing data retained",
+    "inventory": "existing stock retained",
+    "database_seed_jobs_run": false,
+    "database_migration_jobs_run": false,
+    "test_purchases_submitted": false
+  },
+  "functional_tests": {
+    "run": false,
+    "reason": "Owner requested setup only; no pytest, browser checks, chaos or load drills were run for this redeployment."
+  },
+  "email": {
+    "retained_ses_identity_verified": true,
+    "retained_ops_subscription_confirmed": true
+  },
+  "limits": [
+    "Kubernetes rollout readiness was checked as part of deployment; API and browser functionality were not retested.",
+    "AWS services remain running; teardown is paused following the owner reversal."
+  ]
+}

@@ -22,14 +22,14 @@ Run commands below from `fashionstore/` (`cd fashionstore` from the IS458 Git ro
 | `database` (Flyway V001–V003, seeds, verify queries) | Migrated RDS MySQL 8.4 with verified TLS |
 | `functions` (process-checkout, payment-api, notifier, report) | Built; 57 pytest tests green against real MySQL |
 | `contracts` (OpenAPI, event schemas, examples) | Built; validated in Lambda and store-api tests |
-| `platform` (Kustomize base/overlay, Flyway + seed Jobs, Helm values) | Active November 10 demo: two Ready EKS workers; V001–V003 and seed Jobs completed |
+| `platform` (Kustomize base/overlay, Flyway + seed Jobs, Helm values) | 13:55 rebuild: two Ready workers, three available add-ons and both API rollouts complete; no migration or seed Jobs run |
 | `apps/store-api` (Spring Boot 3.5, Java 21) | 27 local MySQL 8.4 tests passed; deployed image `demo-20261109-49cc9e8` includes the cart fix |
 | `apps/storefront` (React 19, Vite) | 21 unit tests, typecheck and production build passed |
-| `tests/e2e` (Playwright) | November 10: 3 live journeys passed, including the previously failing purchase; 1 fault-injection journey skipped |
-| `tests/security`, `correctness`, `failure` (pytest), `tests/load` (k6) | November 10: 31 live API tests and 7 private-access checks passed; 4 optional tests skipped; no sustained load run at handoff |
-| `dashboard` (Streamlit) | 112 offline tests passed; both tabs rendered without browser errors; live dashboard drills not run |
+| `tests/e2e` (Playwright) | Earlier November 10 00:37 run: 3 live passes/1 skip; not rerun for the 13:55 rebuild |
+| `tests/security`, `correctness`, `failure` (pytest), `tests/load` (k6) | Earlier 00:37 run: 31 API passes/4 skips and 7 private-access passes; no tests run for this rebuild |
+| `dashboard` (Streamlit) | Server restarted at 13:55; earlier 112 offline passes/two tab renders are historical, not current retests |
 
-The November 10 demo is running for owner testing: [storefront](https://d33zy72vrkzz7v.cloudfront.net) and [local dashboard](http://localhost:8501). [Current evidence](docs/report/evidence/2026-11-10-restart/results.json) records the successful live cart purchase, API/browser checks and a Terraform plan with no changes. Verified demo release: [`v0.1.0`](https://github.com/sxtay1914/IS458/tree/v0.1.0). The [November 7 teardown](docs/report/evidence/2026-11-07-restart/teardown.json), [earlier browser failure](docs/report/evidence/2026-11-07-restart/results.json) and [November 8 local fix](docs/report/evidence/2026-11-08-cart-deadlock/results.json) remain historical evidence.
+Setup completed on November 10 at 13:55 (UTC+8): [storefront](https://d1oj35ccg258u3.cloudfront.net) and [local dashboard](http://localhost:8501). [Redeployment evidence](docs/report/evidence/2026-11-10-restart/redeploy.json) records 63 Terraform creates, zero changes/deletes and retained orders/stock. No migrations, seeds, purchases or functional tests were run for this rebuild, as requested. The [00:37 results](docs/report/evidence/2026-11-10-restart/results.json) and existing source-build tag [`v0.1.0`](https://github.com/sxtay1914/IS458/tree/v0.1.0) record earlier successful verification, not a retest of this deployment. Teardown is paused after the owner's reversal; services remain running.
 
 The November 7 inventory recorded three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP outside the demo. That is a dated inventory, not a fresh account-wide check.
 
@@ -42,6 +42,8 @@ make test                            # terraform + pytest + store-api + storefro
 ```
 
 ## Deploy (short demo session)
+
+These commands describe a fresh demo. The current rebuild preserved the database and skipped migration, seed and test commands.
 
 ```bash
 make bootstrap                       # once; then copy backend.hcl + terraform.tfvars
@@ -60,4 +62,4 @@ make load-browse load-checkout load-flash PROFILE=demo
 # docs/implementation-plan.md#teardown-rules-manual-destroy
 ```
 
-Keep AWS and the local dashboard running for the owner's tests, then remind the owner to tear down. There is no automatic shutdown or five-day runtime. Afterwards follow the staged checklist in the plan so Lambda execution permissions remain available until its network interfaces are released. `make destroy-demo` runs one full destroy and does not implement that staged sequence. The US$100 budget sends alerts and does not stop spending. The preflight billing snapshot showed about US$6.30 usage for November 1–9, offset by credits; it is delayed data, not a verified remaining-credit balance or final demo cost.
+Keep AWS and the local dashboard running for owner use; the current instruction is setup only, with no tests. Teardown is paused and there is no automatic shutdown or five-day runtime. When teardown is requested again, follow the staged checklist so Lambda execution permissions remain available until its network interfaces are released. `make destroy-demo` runs one full destroy and does not implement that staged sequence. The US$100 budget sends alerts and does not stop spending. The preflight billing snapshot showed about US$6.30 usage for November 1–9, offset by credits; it is delayed data, not a verified remaining-credit balance or final demo cost.

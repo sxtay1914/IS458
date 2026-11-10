@@ -4,7 +4,7 @@ Updated 2026-11-10 from all 13 pages of [FashionStore repository guide.pdf](<Fas
 
 The Git repository is [sxtay1914/IS458](https://github.com/sxtay1914/IS458). The application lives in its `fashionstore/` subdirectory. Paths below are relative to that application directory unless stated otherwise. Run all `make` commands from `fashionstore/` (or use `make -C fashionstore ...` from the repository root).
 
-Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. The November 10 [storefront](https://d33zy72vrkzz7v.cloudfront.net) and [local dashboard](http://localhost:8501) are running for owner testing. Leave them running at handoff and remind the owner to tear down afterwards; there is no automatic shutdown or five-day runtime. Part A production architecture is documentation only.
+Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100 alert budget. The November 10 13:55 rebuild is running: [storefront](https://d1oj35ccg258u3.cloudfront.net) and [local dashboard](http://localhost:8501). Existing orders/stock were retained. The owner requested setup only with no tests; teardown is paused and there is no automatic shutdown. Part A production architecture is documentation only.
 
 ## Technology and recorded status
 
@@ -15,13 +15,13 @@ Scope remains the Part B demo on AWS Singapore (`ap-southeast-1`), with a US$100
 | Functions | Four Python 3.12 arm64 Lambdas | 57 pytest tests against local MySQL 8.4; live checkout and report processing passed |
 | Database | RDS MySQL 8.4; Flyway canonical SQL migrations | V001–V003 migrated on RDS with verified TLS; demo inventory seeded |
 | Infrastructure | Terraform; ten service modules plus private-bucket helper | 33 mock-provider test runs; AWS demo applied with two Free-plan-eligible t3.small workers |
-| Workloads | Kubernetes, Kustomize and Helm | Two Ready EKS workers; API workloads/add-ons deployed; V001–V003 and seed Jobs completed |
-| Browser tests | Playwright | November 10: three live passes, including corrected purchase; one fault-injection skip |
-| Live API checks | pytest | November 10: 31 passes/four optional skips; seven private-access checks passed |
-| Local dashboard | Streamlit, boto3, k6/pytest controls | 112 offline passes; both tabs rendered without errors; no live dashboard drills at handoff |
+| Workloads | Kubernetes, Kustomize and Helm | 13:55 rebuild: two Ready workers, three available add-ons, both API rollouts complete; no migration/seed Jobs run |
+| Browser tests | Playwright | Historical 00:37 run: three passes/one skip; current rebuild not retested |
+| Live API checks | pytest | Historical 00:37 run: 31 passes/four skips and seven private-access passes; current rebuild not retested |
+| Local dashboard | Streamlit, boto3, k6/pytest controls | Server restarted at 13:55; earlier 112 offline passes/two tab renders are historical |
 | Reporting | Lambda, S3 and Athena | First-demo sales/stock CSV and daily revenue evidence retained; not rerun at this handoff |
 
-The [current restart evidence](fashionstore/docs/report/evidence/2026-11-10-restart/results.json) records successful live API/browser checks and a final Terraform plan with no changes. Verified demo release: [`v0.1.0`](https://github.com/sxtay1914/IS458/tree/v0.1.0). The [November 7 browser failure](fashionstore/docs/report/evidence/2026-11-07-restart/results.json), [teardown](fashionstore/docs/report/evidence/2026-11-07-restart/teardown.json) and [November 8 local cart fix](fashionstore/docs/report/evidence/2026-11-08-cart-deadlock/results.json) remain dated historical evidence. The budget/state/GitHub OIDC bootstrap remains active alongside the new demo.
+The [current redeployment record](fashionstore/docs/report/evidence/2026-11-10-restart/redeploy.json) records 63 creates and zero changes/deletes after partial teardown removed 25 + 38 resources. The final 79-resource destroy plan was not applied; RDS/VPC and existing data were retained. The [00:37 test results](fashionstore/docs/report/evidence/2026-11-10-restart/results.json) and source-build tag [`v0.1.0`](https://github.com/sxtay1914/IS458/tree/v0.1.0) remain earlier successful verification, not functional testing of this rebuild. Bootstrap remains active.
 
 The November 7 inventory recorded three stopped Assignment3 EC2 instances, three 8 GB gp3 volumes and one unattached Elastic IP outside the demo; it is not a fresh inventory. The preflight billing snapshot for November 1–9 showed about US$6.30 usage offset by credits, not a verified remaining-credit balance or final demo cost.
 
@@ -230,6 +230,7 @@ This lists the current source/configuration files, including local uncommitted f
     │   │       ├── 2026-11-08-cart-deadlock/
     │   │       │   └── results.json
     │   │       └── 2026-11-10-restart/
+    │   │           ├── redeploy.json
     │   │           └── results.json
     │   ├── implementation-plan.md
     │   ├── presentation-content-structure.md
@@ -552,7 +553,7 @@ This lists the current source/configuration files, including local uncommitted f
 
 ## Deployment sequence and remaining work
 
-The Makefile and six scripts exist and were exercised during deployment. The November 10 restart passed the live API/browser checks, including the corrected cart purchase, and remains running for owner testing. Dashboard chaos/load demonstrations remain unrun at this handoff.
+The Makefile and six scripts exist and were exercised during deployment. The 13:55 rebuild is configured and running without functional retesting at the owner's request. The deployment sequence below describes a fresh demo; migration, seed and test steps were skipped for this rebuild to preserve existing orders/stock.
 
 1. From the repository root, `cd fashionstore`. Configure bootstrap for `github_repository = "sxtay1914/IS458"`, alert recipients and the intended AWS account/region. Run `make bootstrap`; preserve its local state securely outside Git. Set GitHub repository variables `AWS_PLAN_ROLE_ARN` and `TF_STATE_BUCKET` from the bootstrap outputs.
 2. Copy/fill `backend.hcl` and `terraform.tfvars` in `infra/terraform/environments/demo` using their examples. Set owner, expiry, SES addresses, EKS admin ARNs and allowed public endpoint CIDRs. Run `make init-demo deploy-demo`; the plan target packages the Lambdas first.
