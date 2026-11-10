@@ -1,9 +1,9 @@
 {
-  "description": "Browse-only presentation profile: four minutes, peaking at 300 virtual users. No checkout requests.",
+  "description": "Browse-only presentation profile: four minutes, holding 600 virtual users for two minutes. No checkout requests.",
   "browse": {
     "stages": [
-      { "duration": "1m", "target": 150 },
-      { "duration": "2m", "target": 300 },
+      { "duration": "1m", "target": 600 },
+      { "duration": "2m", "target": 600 },
       { "duration": "1m", "target": 0 }
     ]
   }

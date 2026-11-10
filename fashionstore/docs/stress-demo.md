@@ -1,6 +1,6 @@
 # Browsing stress demo: Mac watcher + CloudShell load
 
-Prepared 10 November 2026. Commands are prepared only; this profile has not been run against the rebuilt stack.
+Updated 10 November 2026 after the owner reported no replica increase with the original 300-VU profile. This revised 600-VU profile has not been run against the rebuilt stack.
 
 Current website: **https://d1oj35ccg258u3.cloudfront.net**. Cluster: `fashionstore-demo-eks`, region `ap-southeast-1`.
 
@@ -25,7 +25,7 @@ fi
 cd IS458/fashionstore
 ```
 
-The committed [stress profile](../tests/load/profiles/stress.json) ramps from 0 to 150 virtual users in one minute, then to 300 over two minutes, then to 0 over one minute. It reaches 300 near minute three; it does not hold 300 users for the full four minutes. Active iterations may take a little longer to finish. This is the proposed profile from the demo notes, not a verified reconstruction of the November 8 run.
+The committed [stress profile](../tests/load/profiles/stress.json) ramps from 0 to 600 virtual users in one minute, holds 600 for two minutes, then ramps to 0 over one minute. The previous profile only touched 300 before ramping down; this revision gives the autoscaler sustained demand to observe. Active iterations may take a little longer to finish. This is not a reconstruction of the November 8 run. [k6 ramping VUs](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/ramping-vus/)
 
 ## 2. Start the watcher in Mac Terminal
 
@@ -61,5 +61,6 @@ Press **Ctrl+C in CloudShell** to stop the crowd early. Press **Ctrl+C on the Ma
 - v2 has one separate replica. v1 changing **2 → 3** means total API pods change **3 → 4**. Scaling may go above three v1 pods, or may not occur at all during this run.
 - The scale-down stabilisation window is **120 seconds**; this does not guarantee scale-in exactly two minutes after traffic stops.
 - Show the actual HPA/k6 output. Use a dated historical screenshot if scaling is too slow, and label it as historical evidence.
+- If replicas remain at two, record the peak HPA CPU percentage and k6's request rate/error rate before increasing load again. CloudShell or database bottlenecks can limit throughput without pushing API CPU above target. Stop with Ctrl+C if errors or timeouts become widespread.
 
 Stopping k6 does not stop the AWS stack. Arrange teardown after the presentation; no fixed cost or successful scaling result is claimed for this unrun profile.
